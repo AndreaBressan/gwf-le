@@ -79,7 +79,9 @@ def bishop (geometry, soil_properties, soil_state, quadrature, options):
         increment = old_fos - np.sum(R,1)/Osum
         return increment
 
-    result.factor_of_safety = optimize.newton(FO_m, Fellenius_result, options.tolerance , options.max_iteration)
+    # scipy.optimize.newton uses the secant method if not provided with the 
+    # derivative of the cost function. This is what happens here
+    result.factor_of_safety = optimize.newton(func=FO_m, x0=Fellenius_result, tol=options.tolerance , maxiter=options.max_iteration)
     result.nodes=np.concatenate(x_nodes,y_nodes)
     result.depths=geometry.ground_surface(x_nodes)-y_nodes
     result.weight_forces=w*quadrature.weights
