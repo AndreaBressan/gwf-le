@@ -1,0 +1,4 @@
+5.2 Metodi di analisi di stabilità dei pendii
+
+pg. 13 Metodo di Bishop
+pg. 31 Metodo di Morgestern & Price
