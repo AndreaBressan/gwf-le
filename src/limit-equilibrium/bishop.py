@@ -9,6 +9,7 @@ Bishop limit equilibrium method
 
 import scipy.optimize as optimize
 import numpy as np
+import base_classes as bc
 
 
 def bishop (geometry, soil_properties, soil_state, quadrature, options):
@@ -21,7 +22,7 @@ def bishop (geometry, soil_properties, soil_state, quadrature, options):
         - bounding_box
     soil_properties is a dictionary with entries
         - cohesion
-        - friction_angle
+        - friction_angle (degree)
         - dry_density
         _ porosity
         _ grain_density
@@ -52,8 +53,8 @@ def bishop (geometry, soil_properties, soil_state, quadrature, options):
 
     #"geometric properties"
     x_nodes=quadrature.nodes
-    y_nodes=geometry.slip_surface.value(x_nodes)
-    t_nodes=geometry.slip_surface.derivative(x_nodes)
+    y_nodes=geometry.slip_surface(x_nodes)
+    t_nodes=geometry.slip_tangent(x_nodes)
     l_nodes=np.sqrt(1+t_nodes**2)
     cos=1/l_nodes
     sin=np.sqrt(1-cos**2)
@@ -67,25 +68,30 @@ def bishop (geometry, soil_properties, soil_state, quadrature, options):
 
     R=(c+(p-u)*tan_phi)*quadrature.weights
     O=w*sin*quadrature.weights
-    Osum=np.sum(O,1)
-    Fellenius_result=np.sum(R,1)/Osum
+    Osum=np.sum(O,0)
+    Fellenius_result=np.sum(R,0)/Osum
 
     #"start iteration of Bishop method"
     def FO_m(old_fos):
         m_alpha = cos * (1+1/old_fos * tan_phi * l_nodes)
-        m_alpha = np.max(m_alpha,0.2) 
+        m_alpha = np.maximum(m_alpha,0.2) 
         p=1/m_alpha*(w-1/old_fos*sin*(c -u)*tan_phi)
         R=(c+(p-u)*tan_phi)*quadrature.weights
-        increment = old_fos - np.sum(R,1)/Osum
+        increment = old_fos - np.sum(R,0)/Osum
         return increment
 
     # scipy.optimize.newton uses the secant method if not provided with the 
     # derivative of the cost function. This is what happens here
-    result.factor_of_safety = optimize.newton(func=FO_m, x0=Fellenius_result, tol=options.tolerance , maxiter=options.max_iteration)
-    result.nodes=np.concatenate(x_nodes,y_nodes)
-    result.depths=geometry.ground_surface(x_nodes)-y_nodes
-    result.weight_forces=w*quadrature.weights
-    result.resisting_forces=R
-    result.inter_slice_forces=np.zeros(2,len(x_nodes))
-    return result
+    return bc.Result(
+        factor_of_safety = optimize.newton(
+            func=FO_m, x0=Fellenius_result,
+            tol=options.tolerance,
+            maxiter=options.max_iteration
+            ),
+        nodes=np.vstack((x_nodes,y_nodes)),
+        depths=geometry.ground_surface(x_nodes)-y_nodes,
+        weight_forces=w*quadrature.weights,
+        resisting_forces=R,
+        inter_slice_forces=np.zeros((2,len(x_nodes)))
+        )
 
