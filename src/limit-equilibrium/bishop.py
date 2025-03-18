@@ -57,7 +57,7 @@ def bishop (geometry, soil_properties, soil_state, quadrature, options):
     t_nodes=geometry.slip_tangent(x_nodes)
     l_nodes=np.sqrt(1+t_nodes**2)
     cos=1/l_nodes
-    sin=np.sqrt(1-cos**2)
+    sin=np.sqrt(1-cos**2)*np.sign(t_nodes)
     #"soil properties" 
     tan_phi=np.tan(np.radians(soil_properties.friction_angle(x_nodes,y_nodes)))
     #"pressures" 
@@ -73,9 +73,10 @@ def bishop (geometry, soil_properties, soil_state, quadrature, options):
 
     #"start iteration of Bishop method"
     def FO_m(old_fos):
-        m_alpha = cos * (1+1/old_fos * tan_phi * l_nodes)
-        m_alpha = np.maximum(m_alpha,0.2) 
-        p=1/m_alpha*(w-1/old_fos*sin*(c -u)*tan_phi)
+        m_alpha = cos * (1+1/old_fos * tan_phi * t_nodes)
+        m_alpha = np.maximum(m_alpha,0.2)
+        p=1/m_alpha*(w-1/old_fos*sin*(c-u*tan_phi))
+        nonlocal R
         R=(c+(p-u)*tan_phi)*quadrature.weights
         increment = old_fos - np.sum(R,0)/Osum
         return increment

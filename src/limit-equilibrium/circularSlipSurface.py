@@ -17,7 +17,7 @@ class circularSplipSurface:
         interval=[self.in_pt[0],self.out_pt[0]]
         self.landslide_interval=np.array([np.min(interval),np.max(interval)])
         self.slip_surface= lambda x : self.center[1]-np.sqrt( self. radius**2-(self.center[0]-x)**2)
-        self.slip_tangent= lambda x : (self.center[0]-x)/np.sqrt( self. radius**2-(self.center[0]-x)**2)
+        self.slip_tangent= lambda x : (x-self.center[0])/np.sqrt( self. radius**2-(self.center[0]-x)**2)
 
     @classmethod
     def fromCenterAndRadious(cls, ground_surface, bounding_box, center, radius):
