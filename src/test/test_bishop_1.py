@@ -12,17 +12,18 @@ geometry=circularSplipSurface.fromInOutAndEta(
     out_x=0.0,
     eta=np.radians(70)
     )
+constant_dry_density=18.0
 soil_properties=SoilProperties( 
-    cohesion       = lambda x,y : 5.0,
-    friction_angle = lambda x,y : 30.0,
-    dry_density    = lambda x,y : 18.0,
-    porosity       = lambda x,y : 0.0,
-    grain_density  = lambda x,y : 0.0
+    cohesion       = lambda x,y : 5.0*np.ones_like(x+y),
+    friction_angle = lambda x,y : 30.0*np.ones_like(x+y),
+    dry_density    = lambda x,y : constant_dry_density*np.ones_like(x+y),
+    porosity       = lambda x,y : 0.0*np.ones_like(x+y),
+    grain_density  = lambda x,y : 0.0*np.ones_like(x+y)
     )
 soil_state=SoilState(
-    saturation         = lambda x,y : 1.0,
-    pore_pressure      = lambda x,y : 0.0,
-    integrated_density = lambda x,y : 18.0*(geometry.ground_surface(x)-y)
+    saturation         = lambda x,y : 1.0*np.ones_like(x+y),
+    pore_pressure      = lambda x,y : 0.0*np.ones_like(x+y),
+    integrated_density = lambda x,y : constant_dry_density*(geometry.ground_surface(x)-y)
     )
 quadrature = UniformQuadrature(
     x_interval=geometry.landslide_interval,
