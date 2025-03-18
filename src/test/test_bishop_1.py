@@ -4,6 +4,7 @@ sys.path.append("../limit-equilibrium")
 import base_classes as bc
 from circularSlipSurface import circularSplipSurface
 from bishop import bishop
+from plotGeo import plotGeo
 
 
 geometry=circularSplipSurface.fromInOutAndEta(
@@ -35,4 +36,5 @@ options=bc.Options(
     )
 
 res=bishop(geometry,soil_properties,soil_state,quadrature,options)
+plotGeo(geometry,"geometry.svg")
 print(res.factor_of_safety)
