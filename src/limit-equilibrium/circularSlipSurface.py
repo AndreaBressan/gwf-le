@@ -1,7 +1,7 @@
 import base_classes
 import numpy as np
 
-class circularSplipSurface:
+class circularSplipSurface(base_classes.Geometry):
     def __init__(self, ground_surface, bounding_box, center,  radius, dist, out_pt, in_pt, middle, eta, alpha):
         self.center=center
         self. radius= radius
@@ -133,51 +133,3 @@ def ortho(pt1,pt2):
     dir=pt2-pt1
     dir=dir/np.linalg.norm(dir)
     return np.array([-dir[1],dir[0]])
-#
-#def plotSeg(pt1,pt2,label=None):
-#    plt.plot([pt1[0],pt2[0]],[pt1[1],pt2[1]],color='r')
-#    if not label is None:
-#        plt.annotate(label, (pt1+pt2)/2, ha='center')
-#
-#def plotAng(c,r1,r2,label=None):
-#    r1=r1/np.linalg.norm(r1)
-#    r2=r2/np.linalg.norm(r2)
-#    clip=plp.Polygon([c+r1,c,c+r2],closed=False,color='r',fill=False)
-#    circ=plp.Circle(c,.75, clip_on=True,color='r',fill=False)
-#    ax = plt.gca()
-#    ax.add_patch(clip)
-#    ax.add_patch(circ)
-#    circ.set_clip_path(clip)
-#    if not label is None:
-#        plt.annotate(label, c+.375*(r1+r2), ha='center')
-#
-#def plotCircle(circ,param=False,color='r'):
-#    if np.isinf(circ.r):
-#        plotSeg(circ.out_pt,circ.in_pt)
-#    else:
-#        x_min=min(circ.out_pt[0],circ.in_pt[0])
-#        x_max=max(circ.out_pt[0],circ.in_pt[0])
-#        y_min=circ.c[1]-circ.r if (circ.c[0]>x_min and circ.c[0]<x_max) else min(circ.out_pt[1],circ.in_pt[1])
-#        y_max=max(circ.out_pt[1],circ.in_pt[1])
-#        clipBox=plp.Rectangle([x_min,y_min],x_max-x_min,y_max-y_min,fill=False, facecolor="none", edgecolor="none")
-#        c=plp.Circle(circ.c,circ.r,clip_on=True,color=color,fill=False)
-#        if param:
-#            txt="${var}={value:.1f}$"
-#            txt2="${var}=({v1:.1f},{v2:.1f})$"
-#            txt3="${var}={value:.1f} \pi$"
-#            plt.plot(circ.c[0], circ.c[1], 'ro')
-#            plt.annotate(txt2.format(var="\mathbf{c}",v1=circ.c[0],v2=circ.c[1]),circ.c)
-#            plt.annotate(txt2.format(var="\mathbf{out_pt}",v1=circ.out_pt[0],v2=circ.out_pt[1]),circ.out_pt)
-#            plt.annotate(txt2.format(var="\mathbf{in_pt}",v1=circ.in_pt[0],v2=circ.in_pt[1]),circ.in_pt)
-#            plotSeg(circ.c,circ.out_pt,txt.format(var="r",value=circ.r))
-#            plotSeg(circ.out_pt,circ.in_pt,"$\overline{\mathbf{ue}}$")
-#            dir=circ.m-circ.c
-#            dir=dir/np.linalg.norm(dir)*circ.d
-#            de=circ.m+dir
-#            plotSeg(circ.m,de,txt.format(var="d",value=circ.d))
-#            plotAng(circ.in_pt,[1,0],ortho(circ.c,circ.in_pt),txt3.format(var="\\eta",value=circ.eta/np.pi))
-#            plotAng(circ.c,circ.m-circ.c,circ.in_pt-circ.c,txt3.format(var="\\alpha",value=circ.alpha/np.pi))
-#        ax = plt.gca()
-#        ax.add_patch(clipBox)
-#        ax.add_patch(c)
-#        c.set_clip_path(clipBox)
