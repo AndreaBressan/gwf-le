@@ -2,10 +2,10 @@ import numpy as np
 import sys
 sys.path.append("../limit-equilibrium")
 from base_classes import SoilProperties,SoilState,UniformQuadrature,Options,np,plt
-from circularSlipSurface import circularSplipSurface
+from circularSlipSurface import circularSlipSurface
 from bishop import bishop
 
-geometry=circularSplipSurface.fromInOutAndEta(
+geometry=circularSlipSurface.fromInOutAndEta(
     ground_surface=lambda x : 0*(x<=0)+ x*(0<x)*(x<=3) + 3*(x>3),
     bounding_box=np.array([[-5,10],[-5,9]]),
     in_x=5.0,
