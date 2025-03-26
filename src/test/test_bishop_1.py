@@ -1,4 +1,5 @@
 import numpy as np
+import time
 import sys
 sys.path.append("../limit-equilibrium")
 from base_classes import SoilProperties,SoilState,UniformQuadrature,Options,np,plt
@@ -34,7 +35,12 @@ options=Options(
     tolerance = 1e-4
     )
 
-res=bishop(geometry,soil_properties,soil_state,quadrature,options)
+time_start = time.perf_counter()
+for i in range(1,1000):
+    res=bishop(geometry,soil_properties,soil_state,quadrature,options)
+time_end = time.perf_counter()
+time_duration = time_end - time_start
+print(f'Took {time_duration:.3f} seconds')
 fig=geometry.plot(400)
 plt.savefig("geometry.svg")
 
