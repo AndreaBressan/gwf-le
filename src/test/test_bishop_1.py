@@ -35,13 +35,21 @@ options=Options(
     tolerance = 1e-4
     )
 
+res=[]
 time_start = time.perf_counter()
-for i in range(1,1000):
-    res=bishop(geometry,soil_properties,soil_state,quadrature,options)
+for i in range(0,1000):
+    soil_properties=SoilProperties( 
+    cohesion       = lambda x,y : 5.0*(i/1000)*np.ones_like(x+y),
+    friction_angle = lambda x,y : 30.0*np.ones_like(x+y),
+    dry_density    = lambda x,y : constant_dry_density*np.ones_like(x+y),
+    porosity       = lambda x,y : 0.0*np.ones_like(x+y),
+    grain_density  = lambda x,y : 0.0*np.ones_like(x+y)
+    )
+    res.append(bishop(geometry,soil_properties,soil_state,quadrature,options))
 time_end = time.perf_counter()
 time_duration = time_end - time_start
 print(f'Took {time_duration:.3f} seconds')
 fig=geometry.plot(400)
 plt.savefig("geometry.svg")
 
-print(res.factor_of_safety)
+print(res[0].factor_of_safety, res[999].factor_of_safety)
