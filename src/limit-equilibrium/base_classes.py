@@ -26,7 +26,6 @@ class Geometry:
     def plot(self,num_points):
         ocra=(205/255,133/255,63/255)
         ocra2=(205/511,133/511,63/511)
-        red=(1,0,0)
 
         xs=self.getGroundPlotPoints(num_points)
         gs=self.ground_surface(xs)
@@ -36,13 +35,16 @@ class Geometry:
         plt.plot(xs, gs, lw=1,color=ocra2)
         plt.ylim((self.bounding_box[1,0],self.bounding_box[1,1]))
         plt.xlim((self.bounding_box[0,0],self.bounding_box[0,1]))
+        self.plotSlipSurface(num_points)
 
-        xl=self.getLandslidePlotPoints(num_points)
-        yl=self.slip_surface(xl)
-
-        plt.plot(xl, yl, lw=1,color=red)
         plt.title('Geometry plot')
         return plt.gcf()
+
+    def plotSlipSurface(self,num_points):
+        red=(1,0,0)
+        xl=self.getLandslidePlotPoints(num_points)
+        yl=self.slip_surface(xl)
+        plt.plot(xl, yl, lw=1,color=red)
     
     def getGroundPlotPoints(self,num_points):
         xs=np.linspace(self.bounding_box[0,0],self.bounding_box[0,1],num_points)
