@@ -93,6 +93,7 @@ def bishop (geometry, soil_properties, soil_state, quadrature, options):
         depths=geometry.ground_surface(x_nodes)-y_nodes,
         weight_forces=w*quadrature.weights,
         resisting_forces=R,
-        inter_slice_forces=np.zeros((2,len(x_nodes)))
+        inter_slice_forces=np.zeros((2,len(x_nodes))),
+        sim_inputs=(geometry, soil_properties, soil_state, quadrature, options)
         )
 

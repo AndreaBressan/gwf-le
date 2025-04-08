@@ -99,10 +99,11 @@ class Options:
         self.tolerance=tolerance
 
 class Result:
-    def __init__(self, factor_of_safety,nodes, depths, weight_forces, resisting_forces, inter_slice_forces):
+    def __init__(self, factor_of_safety,nodes, depths, weight_forces, resisting_forces, inter_slice_forces,sim_inputs):
         self.factor_of_safety=factor_of_safety        
         self.nodes=nodes
         self.depths=depths
         self.weight_forces=weight_forces
         self.resisting_forces=resisting_forces
         self.inter_slice_forces=inter_slice_forces
+        self.inputs=sim_inputs

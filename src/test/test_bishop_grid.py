@@ -44,4 +44,7 @@ result=[bishop(geometry,soil_properties,soil_state,UniformQuadrature(x_interval=
 time_duration = time.perf_counter()- time_start
 print(f'Bishop computation took {time_duration:.3f} seconds')
 
-print(res[0].factor_of_safety, res[999].factor_of_safety)
+result.sort(key=lambda x: x.factor_of_safety)
+fig=result[0].inputs[0].plot(400)
+plt.savefig("worst_grid.svg")
+print(result[0].factor_of_safety, result[-1].factor_of_safety)
