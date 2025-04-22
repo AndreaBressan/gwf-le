@@ -55,18 +55,24 @@ def func(v):
 
 func.calls=0
 
+bounds = ((1.5,10) ,
+          (-10,0) , 
+          (0, np.pi/2))
+
 zero=[]
 calls=[]
+geos=[]
 for j in range(0,5):
     trial=[result[j].inputs[0].landslide_interval[0],result[j].inputs[0].landslide_interval[1],result[j].inputs[0].eta]
     zero.append( optimize.minimize(func, trial , 
                           method='Nelder-Mead',
- #                         bounds = bounds,
+                          bounds = bounds,
                           options = {'disp':False  ,'xatol' : 1.e-2 , 'fatol':1e-2 , 'maxiter':100 , 'return_all':True}
                           )
     )
     calls.append(func.calls)
     print(f'Starting from grid FOS: {result[j].factor_of_safety:3f} the result is {zero[j].fun:3f} using {func.calls:d}')
+    geos.append(circularSlipSurface.fromInOutAndEta(ground_surface,bounding_box,zero[j].x[0],zero[j].x[1],zero[j].x[2]))
     func.calls=0
 
 
