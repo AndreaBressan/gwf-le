@@ -16,18 +16,18 @@ def bishop (geometry, soil_properties, soil_state, quadrature, options):
     """
     Inputs:
 
-    geometry is a dictionary with entries
+    geometry is a class with entries
         - ground_surface, a map x to y
         - slip_surface, a map x to y
         - bounding_box
-    soil_properties is a dictionary with entries
+    soil_properties is a class with entries
         - cohesion
         - friction_angle (degree)
         - dry_density
         _ porosity
         _ grain_density
         all are maps (x,y) to a real number
-    soil_state is a dictionary
+    soil_state is a class
         _ saturation
         _ pore_pressure
         _ integrated_density
@@ -42,7 +42,7 @@ def bishop (geometry, soil_properties, soil_state, quadrature, options):
 
     Outputs:
 
-    results a dictionary with entries
+    results a class with entries
         _ factor_of_safety (scalar)
         _ nodes            2xn matrix
         _ depths
