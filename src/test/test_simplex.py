@@ -3,7 +3,10 @@ import sys
 sys.path.append("../limit-equilibrium")
 from base_classes import SoilProperties,SoilState,UniformQuadrature,Options,np,plt
 from bishop import bishop
-from gridOfCircles import GridOptions, gridComputation
+from gridOfCircles import GridOptions, gridComputation,computeEtaMinForSurface
+from circularSlipSurface import circularSlipSurface
+import scipy.optimize as optimize
+
 
 ground_surface=lambda x : 0*(x<=0)+ x*(0<x)*(x<=3) + 3*(x>3)
 bounding_box=np.array([[-5,10],[-5,9]])
@@ -39,5 +42,34 @@ fig=result[0].inputs[0].plot(400,dpc=240,x_cm=10)
 for j in range(1,5):
     result[j].inputs[0].plotSlipSurface(400)
 
-plt.savefig("worst_grid.svg")
+
+def func(v):
+    x_in , x_out , eta = v[0] , v[1] , v[2]
+    func.calls+=1
+    if eta>computeEtaMinForSurface(ground_surface,bounding_box,x_in,x_out) and eta<np.pi/2:
+        geometry=circularSlipSurface.fromInOutAndEta(ground_surface,bounding_box,x_in,x_out,eta)
+        ff = bishop(geometry,soil_properties,soil_state,mOptions).factor_of_safety
+    else:
+        ff = 100.
+    return ff
+
+func.calls=0
+
+zero=[]
+calls=[]
+for j in range(0,5):
+    trial=[result[j].inputs[0].landslide_interval[0],result[j].inputs[0].landslide_interval[1],result[j].inputs[0].eta]
+    zero.append( optimize.minimize(func, trial , 
+                          method='Nelder-Mead',
+ #                         bounds = bounds,
+                          options = {'disp':False  ,'xatol' : 1.e-2 , 'fatol':1e-2 , 'maxiter':100 , 'return_all':True}
+                          )
+    )
+    calls.append(func.calls)
+    print(f'Starting from grid FOS: {result[j].factor_of_safety:3f} the result is {zero[j].fun:3f} using {func.calls:d}')
+    func.calls=0
+
+
+
+plt.savefig("worst_simplex.svg")
 print(result[0].factor_of_safety, result[-1].factor_of_safety)
