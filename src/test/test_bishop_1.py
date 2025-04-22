@@ -26,14 +26,15 @@ soil_state=SoilState(
     pore_pressure      = lambda x,y : 0.0*np.ones_like(x+y),
     integrated_density = lambda x,y : constant_dry_density*(geometry.ground_surface(x)-y)
     )
-quadrature = UniformQuadrature(
-    x_interval=geometry.landslide_interval,
-    num=30
-    ) 
+
 options=Options(
     max_iteration = 200,
-    tolerance = 1e-4
-    )
+    tolerance = 1e-4,
+    quadrature = lambda interval : UniformQuadrature(
+        x_interval=interval,
+        num=20
+        ) 
+)
 
 res=[]
 time_start = time.perf_counter()
@@ -45,7 +46,7 @@ for i in range(0,1000):
     porosity       = lambda x,y : 0.0*np.ones_like(x+y),
     grain_density  = lambda x,y : 0.0*np.ones_like(x+y)
     )
-    res.append(bishop(geometry,soil_properties,soil_state,quadrature,options))
+    res.append(bishop(geometry,soil_properties,soil_state,options))
 time_end = time.perf_counter()
 time_duration = time_end - time_start
 print(f'Took {time_duration:.3f} seconds')

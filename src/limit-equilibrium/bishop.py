@@ -12,7 +12,7 @@ import numpy as np
 import base_classes as bc
 
 
-def bishop (geometry, soil_properties, soil_state, quadrature, options):
+def bishop (geometry, soil_properties, soil_state, options):
     """
     Inputs:
 
@@ -32,13 +32,13 @@ def bishop (geometry, soil_properties, soil_state, quadrature, options):
         _ pore_pressure
         _ integrated_density
         all are maps (x,y) to a real number
-    quadrature
-        _ weights ( horizontal slice  width  )
-        _ nodes   ( slice base middle points )
-        more generally any quadrature
     options
         _ max_iteration
         _ tolerance
+        _ quadrature
+            _ weights ( horizontal slice  width  )
+             _ nodes   ( slice base middle points )
+            more generally any quadrature
 
     Outputs:
 
@@ -51,8 +51,9 @@ def bishop (geometry, soil_properties, soil_state, quadrature, options):
         _ inter_slice_forces
     """
 
+    quad=options.quadrature(geometry.landslide_interval)
     #"geometric properties"
-    x_nodes=quadrature.nodes
+    x_nodes=quad.nodes
     y_nodes=geometry.slip_surface(x_nodes)
     t_nodes=geometry.slip_tangent(x_nodes)
     l_nodes=np.sqrt(1+t_nodes**2)
@@ -66,8 +67,8 @@ def bishop (geometry, soil_properties, soil_state, quadrature, options):
     c=soil_properties.cohesion(x_nodes,y_nodes)*l_nodes
     p=w*cos  #"Fellenius method to init iteration of the Bishop method
 
-    R=(c+(p-u)*tan_phi)*quadrature.weights
-    O=w*sin*quadrature.weights
+    R=(c+(p-u)*tan_phi)*quad.weights
+    O=w*sin*quad.weights
     Osum=np.sum(O,0)
     Fellenius_result=np.sum(R,0)/Osum
 
@@ -77,7 +78,7 @@ def bishop (geometry, soil_properties, soil_state, quadrature, options):
         m_alpha = np.maximum(m_alpha,0.2)
         p=1/m_alpha*(w-1/old_fos*sin*(c-u*tan_phi))
         nonlocal R
-        R=(c+(p-u)*tan_phi)*quadrature.weights
+        R=(c+(p-u)*tan_phi)*quad.weights
         increment = old_fos - np.sum(R,0)/Osum
         return increment
 
@@ -91,9 +92,9 @@ def bishop (geometry, soil_properties, soil_state, quadrature, options):
             ),
         nodes=np.vstack((x_nodes,y_nodes)),
         depths=geometry.ground_surface(x_nodes)-y_nodes,
-        weight_forces=w*quadrature.weights,
+        weight_forces=w*quad.weights,
         resisting_forces=R,
         inter_slice_forces=np.zeros((2,len(x_nodes))),
-        sim_inputs=(geometry, soil_properties, soil_state, quadrature, options)
+        sim_inputs=(geometry, soil_properties, soil_state, options)
         )
 

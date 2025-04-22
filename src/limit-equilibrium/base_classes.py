@@ -23,14 +23,25 @@ class Geometry:
         self.bounding_box=bounding_box
         self.landslide_interval=landslide_interval
 
-    def plot(self,num_points):
+    def plot(self,num_points,dpc=100,x_cm=np.nan,y_cm=np.nan):
         ocra=(205/255,133/255,63/255)
         ocra2=(205/511,133/511,63/511)
+        if np.isnan(x_cm):
+            if np.isnan(y_cm):
+                x_cm=10
+                y_cm=x_cm/np.sqrt(2)
+            else:
+                x_cm=y_cm*np.sqrt(2)
+        else:
+            if np.isnan(y_cm):
+                y_cm=x_cm/np.sqrt(2)
 
         xs=self.getGroundPlotPoints(num_points)
         gs=self.ground_surface(xs)
         bt=self.bounding_box[1,0]*np.ones_like(gs)
+        inch=2.54
 
+        plt.figure(1,dpi=dpc*inch,figsize=(x_cm/inch,y_cm/inch))
         plt.fill_between(xs, gs, bt, interpolate=True, color=ocra)
         plt.plot(xs, gs, lw=1,color=ocra2)
         plt.ylim((self.bounding_box[1,0],self.bounding_box[1,1]))
@@ -96,9 +107,10 @@ class UniformQuadrature(Quadrature):
         self.weights=(x_interval[1]-x_interval[0])/num*np.ones(num)
 
 class Options:
-    def __init__(self, max_iteration, tolerance):
+    def __init__(self, max_iteration, tolerance, quadrature=lambda interval:UniformQuadrature(interval,30)):
         self.max_iteration=max_iteration
         self.tolerance=tolerance
+        self.quadrature=quadrature
 
 class Result:
     def __init__(self, factor_of_safety,nodes, depths, weight_forces, resisting_forces, inter_slice_forces,sim_inputs):
