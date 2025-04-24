@@ -6,11 +6,17 @@ from bishop import bishop
 from gridOfCircles import GridOptions, gridComputation,computeEtaMinForSurface
 from circularSlipSurface import circularSlipSurface
 import scipy.optimize as optimize
+import time
 
 
 ground_surface=lambda x : 0*(x<=0)+ x*(0<x)*(x<=3) + 3*(x>3)
 bounding_box=np.array([[-5,10],[-5,9]])
-gOptions=GridOptions(in_interval=[3,10],out_interval=[-5,1],min_eta_inc=np.radians(5),num_in_pts=10,num_out_pts=10)
+gOptions=GridOptions(
+    in_interval=[2,10],
+    out_interval=[-5,1],
+    min_eta_inc=np.radians(7),
+    num_in_pts=25,
+    num_out_pts=25)
 
 constant_dry_density=18.0
 soil_properties=SoilProperties( 
@@ -35,47 +41,66 @@ mOptions=Options(
     )
 
 [result,time_duration]=gridComputation(bishop, ground_surface,bounding_box,soil_properties,soil_state,gOptions,mOptions)
-print(f'Bishop computation took {time_duration:.3f} seconds')
-print(f'The grid contains {len(result):d} points')
-fig=result[0].inputs[0].plot(400,dpc=240,x_cm=10)
+print(f'The grid contains {len(result):d} points, all evaluations took {time_duration:.3f} seconds')
 
-for j in range(1,5):
-    result[j].inputs[0].plotSlipSurface(400)
-
+nstart=10
+# Plot worst nstart cases
+result[0].inputs[0].plot(300,x_cm=10)
+for j in range(1,nstart):
+    result[j].inputs[0].plotSlipSurface(200)
+plt.savefig('simplex_starting_points.svg')
+plt.close()
 
 def func(v):
     x_in , x_out , eta = v[0] , v[1] , v[2]
     func.calls+=1
-    if eta>computeEtaMinForSurface(ground_surface,bounding_box,x_in,x_out) and eta<np.pi/2:
-        geometry=circularSlipSurface.fromInOutAndEta(ground_surface,bounding_box,x_in,x_out,eta)
-        ff = bishop(geometry,soil_properties,soil_state,mOptions).factor_of_safety
-    else:
-        ff = 100.
+    eta_min=computeEtaMinForSurface(ground_surface,bounding_box,x_in,x_out)
+    etac=np.clip(eta,eta_min,np.pi/2)
+    pen=1*np.abs(eta-etac)
+    geometry=circularSlipSurface.fromInOutAndEta(ground_surface,bounding_box,x_in,x_out,etac)
+    ff = pen+bishop(geometry,soil_properties,soil_state,mOptions).factor_of_safety
     return ff
 
+
+time_start=time.perf_counter()
 func.calls=0
-
-bounds = ((1.5,10) ,
-          (-10,0) , 
+bounds = ((2,10) ,
+          (-10,1) , 
           (0, np.pi/2))
-
 zero=[]
 calls=[]
-geos=[]
-for j in range(0,5):
-    trial=[result[j].inputs[0].landslide_interval[0],result[j].inputs[0].landslide_interval[1],result[j].inputs[0].eta]
+start_geo=[]
+end_geo=[]
+for j in range(0,nstart):
+    start_geo=result[j].inputs[0]
+    trial=[start_geo.landslide_interval[1],start_geo.landslide_interval[0],start_geo.eta]
     zero.append( optimize.minimize(func, trial , 
                           method='Nelder-Mead',
                           bounds = bounds,
-                          options = {'disp':False  ,'xatol' : 1.e-2 , 'fatol':1e-2 , 'maxiter':100 , 'return_all':True}
+                          options = {'disp':False  ,'xatol' : 1.e-4 , 'fatol':1e-4 , 'maxiter':4000 , 'return_all':False}
                           )
     )
     calls.append(func.calls)
-    print(f'Starting from grid FOS: {result[j].factor_of_safety:3f} the result is {zero[j].fun:3f} using {func.calls:d}')
-    geos.append(circularSlipSurface.fromInOutAndEta(ground_surface,bounding_box,zero[j].x[0],zero[j].x[1],zero[j].x[2]))
     func.calls=0
+    print(f'{j:d}.',end='')
+    end_geo.append(circularSlipSurface.fromInOutAndEta(ground_surface,bounding_box,zero[j].x[0],zero[j].x[1],zero[j].x[2]))
 
+time_duration = time.perf_counter()- time_start
+print(f'\nThe simplex method took {time_duration/nstart:.3f}s per start, {time_duration:.3f}s in total')
 
+# Print per case summary and plot surfaces
+for j in range(0,nstart):
+    print(f'Case {j:2d}: after-optimization-FOS={zero[j].fun:3f}, starting-FOS={result[j].factor_of_safety:3f}, using {calls[j]:d} evaluations')
+    plt.figure()
+    result[j].inputs[0].plot(300)
+    end_geo[j].plotSlipSurface(200)
+    plt.savefig(f'simplex_comparison_{j:2d}.svg')
+    plt.close()
 
-plt.savefig("worst_simplex.svg")
-print(result[0].factor_of_safety, result[-1].factor_of_safety)
+# Print ending cases
+plt.figure()
+end_geo[0].plot(300,x_cm=10)
+for j in range(1,nstart):
+    end_geo[j].plotSlipSurface(200)
+plt.savefig('simplex_ending_geometries.svg')
+plt.close()
