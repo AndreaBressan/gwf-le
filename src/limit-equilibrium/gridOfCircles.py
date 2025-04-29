@@ -18,16 +18,19 @@ def gridOfCircles(ground_surface, bounding_box, in_interval,out_interval,min_eta
     return out_geometries
 
 
-def computeEtaMinForSurface(ground_surface,bounding_box,in_pt,out_pt):
-    test_pts=np.linspace(in_pt,out_pt,500)
+def computeEtaMinForSurface(ground_surface,bounding_box,in_pt,out_pt,npts=500,tol=1e-4):
+    test_pts=np.linspace(in_pt,out_pt,npts)
+    dist=np.minimum(np.abs(test_pts-in_pt),np.abs(out_pt-test_pts))
     gl=ground_surface(test_pts)
     eta_max=np.pi/2
     eta_min=np.arctan((gl[0]-gl[-1])/(in_pt-out_pt))
     eta_mid=(eta_max+eta_min)/2
-    for iter in range(1,int(np.ceil(np.log2(eta_max/eta_min)))+2):
+    for iter in range(1,40):
         lower=circularSlipSurface.fromInOutAndEta(ground_surface,bounding_box,in_pt,out_pt,eta_mid)
-        test_circ=gl-lower.slip_surface(test_pts)
-        if np.any(test_circ<0):
+        test=gl-lower.slip_surface(test_pts)
+        #if not np.all(test_circ>=tol*dist):
+        #    break
+        if np.any(test<tol*dist):
             eta_min=eta_mid
             eta_mid=(eta_max+eta_min)/2
         else:

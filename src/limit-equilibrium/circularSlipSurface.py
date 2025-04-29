@@ -16,7 +16,8 @@ class circularSlipSurface(base_classes.Geometry):
         self.bounding_box=bounding_box
         interval=[self.in_pt[0],self.out_pt[0]]
         self.landslide_interval=np.array([np.min(interval),np.max(interval)])
-        self.slip_surface= lambda x : self.center[1]-np.sqrt( self. radius**2-(self.center[0]-x)**2)
+        # max used to silence warnings due to small negative arguments of sqrt due to floating point approximation
+        self.slip_surface= lambda x : self.center[1]-np.sqrt( np.maximum(self.radius**2-(self.center[0]-x)**2,0.0)) 
         self.slip_tangent= lambda x : (x-self.center[0])/np.sqrt( self. radius**2-(self.center[0]-x)**2)
 
     @classmethod

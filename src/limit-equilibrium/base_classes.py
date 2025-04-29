@@ -51,11 +51,10 @@ class Geometry:
         plt.title('Geometry plot')
         return plt.gcf()
 
-    def plotSlipSurface(self,num_points):
-        red=(1,0,0)
+    def plotSlipSurface(self,num_points,color=(1,0,0)):
         xl=self.getLandslidePlotPoints(num_points)
         yl=self.slip_surface(xl)
-        plt.plot(xl, yl, lw=1,color=red)
+        plt.plot(xl, yl, lw=1,color=color)
     
     def getGroundPlotPoints(self,num_points):
         xs=np.linspace(self.bounding_box[0,0],self.bounding_box[0,1],num_points)
