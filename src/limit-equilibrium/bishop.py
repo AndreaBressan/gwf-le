@@ -95,6 +95,6 @@ def bishop (geometry, soil_properties, soil_state, options):
         weight_forces=w*quad.weights,
         resisting_forces=R,
         inter_slice_forces=np.zeros((2,len(x_nodes))),
-        sim_inputs=(geometry, soil_properties, soil_state, options)
+        inputs=(geometry, soil_properties, soil_state, options)
         )
 
