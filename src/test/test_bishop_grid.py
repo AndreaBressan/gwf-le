@@ -9,11 +9,11 @@ from gridOfCircles import gridOfCircles
 
 ground_surface=lambda x : 0*(x<=0)+ x*(0<x)*(x<=3) + 3*(x>3)
 bounding_box=np.array([[-5,10],[-5,9]])
-in_interval=[3,10]
-out_interval=[-5,1]
+in_interval=[3,6]
+out_interval=[-3,0.75]
 min_eta_inc=np.radians(5)
-num_in_pts=10
-num_out_pts=10
+num_in_pts=3
+num_out_pts=5
 
 time_start = time.perf_counter()
 geometries=gridOfCircles(ground_surface, bounding_box, in_interval,out_interval,min_eta_inc,num_in_pts,num_out_pts)
