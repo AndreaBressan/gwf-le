@@ -41,7 +41,7 @@ class Geometry:
         bt=self.bounding_box[1,0]*np.ones_like(gs)
         inch=2.54
 
-#        plt.figure(1,dpi=dpc*inch,figsize=(x_cm/inch,y_cm/inch))
+        plt.figure(1,dpi=dpc*inch,figsize=(x_cm/inch,y_cm/inch))
         plt.fill_between(xs, gs, bt, interpolate=True, color=ocra)
         plt.plot(xs, gs, lw=1,color=ocra2)
         plt.ylim((self.bounding_box[1,0],self.bounding_box[1,1]))
