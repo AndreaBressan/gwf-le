@@ -30,22 +30,22 @@ def gridOfCircles(ground_surface, bounding_box, in_interval=None,out_interval=No
 
 def computeEtaMinForSurface(ground_surface,bounding_box,in_pt,out_pt,npts=500,tol=1e-4):
     test_pts=np.linspace(in_pt,out_pt,npts)
-    dist=np.minimum(np.abs(test_pts-in_pt),np.abs(out_pt-test_pts))
+    # prova
     gl=ground_surface(test_pts)
     eta_max=np.pi/2
     eta_min=np.arctan((gl[0]-gl[-1])/(in_pt-out_pt))
     eta_mid=(eta_max+eta_min)/2
-    for iter in range(1,40):
-        lower=circularSlipSurface.fromInOutAndEta(ground_surface,bounding_box,in_pt,out_pt,eta_mid)
-        test=gl-lower.slip_surface(test_pts)
-        #if not np.all(test_circ>=tol*dist):
-        #    break
-        if np.any(test<tol*dist):
-            eta_min=eta_mid
-            eta_mid=(eta_max+eta_min)/2
-        else:
+    test_pts=test_pts[1:-2]
+    gl=gl[1:-2]
+    
+    for iter in range(0,20):
+        mid_surf=circularSlipSurface.fromInOutAndEta(ground_surface,bounding_box,in_pt,out_pt,eta_mid)
+        test=mid_surf.slip_surface(test_pts)
+        if np.all(gl>test):
             eta_max=eta_mid
-            eta_mid=(eta_max+eta_min)/2
+        else:
+            eta_min=eta_mid
+        eta_mid=(eta_max+eta_min)/2
     return eta_mid
     
 class GridOptions:
