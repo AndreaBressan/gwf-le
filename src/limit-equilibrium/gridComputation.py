@@ -16,7 +16,7 @@ class GridOptions:
 def gridComputation(method,ground_surface, bounding_box,soil_properties,soil_state,gridOptions,methodOptions):
     geometries=gridOfCircles(ground_surface, bounding_box, gridOptions.in_interval,gridOptions.out_interval,gridOptions.min_eta_inc,gridOptions.num_in_pts,gridOptions.num_out_pts)
     time_start = time.perf_counter()
-    result=[method(geometry,soil_properties,soil_state,UniformQuadrature(x_interval=geometry.landslide_interval,num=30),methodOptions) for geometry in geometries]
+    result=[method(geometry,soil_properties,soil_state,methodOptions) for geometry in geometries]
     time_duration = time.perf_counter()- time_start
     result.sort(key=lambda x: x.factor_of_safety)
     return result,time_duration
