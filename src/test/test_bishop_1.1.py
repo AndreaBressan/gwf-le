@@ -44,4 +44,22 @@ time_duration = time_end - time_start
 print(f'Took {time_duration:.3f} seconds')
 fig=geometry.plot(400)
 plt.savefig("geometry.svg")
-print('Safety Factor:', round(res.factor_of_safety,5))
+print('Safety Factor 1:', round(res.factor_of_safety,5))
+
+geometry=circularSlipSurface.fromInOutAndEta(
+    ground_surface=lambda x : 0*(x<=0)+ x*(0<x)*(x<=3) + 3*(x>3),
+    bounding_box=np.array([[-5,10],[-5,9]]),
+    in_x=5.0,
+    out_x=0.0,
+    eta=np.radians(50)
+    )
+
+res=[]
+time_start = time.perf_counter()
+res = bishop(geometry,soil_properties,soil_state,options)
+time_end = time.perf_counter()
+time_duration = time_end - time_start
+print(f'Took {time_duration:.3f} seconds')
+fig=geometry.plot(400)
+plt.savefig("geometry.svg")
+print('Safety Factor 2:', round(res.factor_of_safety,5))
