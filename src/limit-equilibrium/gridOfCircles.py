@@ -38,37 +38,6 @@ def computeEtaMinForSurface(ground_surface,bounding_box,in_pt,out_pt,npts=500,to
         eta_mid=(eta_max+eta_min)/2
     return eta_mid
     
-    for iter in range(1,40):
-        lower=circularSlipSurface.fromInOutAndEta(ground_surface,bounding_box,in_pt,out_pt,eta_mid)
-        test=gl-lower.slip_surface(test_pts)
-        #if not np.all(test_circ>=tol*dist):
-        #    break
-        if np.any(test<tol*dist):
-            eta_min=eta_mid
-            eta_mid=(eta_max+eta_min)/2
-        else:
-            eta_max=eta_mid
-            eta_mid=(eta_max+eta_min)/2
-    return eta_mid
-
-    dist=np.minimum(np.abs(test_pts-in_pt),np.abs(out_pt-test_pts))
-    gl=ground_surface(test_pts)
-    eta_max=np.pi/2
-    eta_min=np.arctan((gl[0]-gl[-1])/(in_pt-out_pt))
-    eta_mid=(eta_max+eta_min)/2
-    for iter in range(1,40):
-        lower=circularSlipSurface.fromInOutAndEta(ground_surface,bounding_box,in_pt,out_pt,eta_mid)
-        test=gl-lower.slip_surface(test_pts)
-        #if not np.all(test_circ>=tol*dist):
-        #    break
-        if np.any(test<tol*dist):
-            eta_min=eta_mid
-            eta_mid=(eta_max+eta_min)/2
-        else:
-            eta_max=eta_mid
-            eta_mid=(eta_max+eta_min)/2
-    return eta_mid
-    
 class GridOptions:
     def __init__(self,in_interval,out_interval,min_eta_inc=np.radians(5),num_in_pts=10,num_out_pts=10):
         self.in_interval=in_interval
