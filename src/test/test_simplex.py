@@ -8,6 +8,10 @@ from circularSlipSurface import circularSlipSurface
 import scipy.optimize as optimize
 import time
 
+# Aggiunta da Leo
+import matplotlib as mpl
+mpl.rcParams['figure.dpi'] = 300
+
 #import warnings
 #warnings.filterwarnings("error")
 
@@ -107,6 +111,7 @@ for j in range(0,nstart):
     result[j].inputs[0].plot(300)
     end_geo[j].plotSlipSurface(200,color=(0,0,1))
     plt.savefig(f'simplex_comparison_{j:2d}.svg')
+    plt.show()
     plt.close()
 
 # Print ending cases
@@ -114,6 +119,7 @@ plt.figure()
 end_geo[0].plot(300,x_cm=10)
 for j in range(1,nstart):
     end_geo[j].plotSlipSurface(200,color=(0,0,1))
+plt.show()
 plt.savefig('simplex_ending_geometries.svg')
 plt.close()
 
