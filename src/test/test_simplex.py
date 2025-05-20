@@ -8,7 +8,7 @@ from circularSlipSurface import circularSlipSurface
 import scipy.optimize as optimize
 import time
 
-# Aggiunta da Leo
+# Aggiunta da Leo: così funziona
 import matplotlib as mpl
 mpl.rcParams['figure.dpi'] = 300
 
