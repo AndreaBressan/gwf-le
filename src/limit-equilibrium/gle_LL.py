@@ -123,16 +123,15 @@ def gle (geometry, soil_properties, soil_state, options, f):
         m_alpha_star = sin - cos /x[0] * tan_phi
         Q = x[1]*f_x
         den = 1 / (m_alpha + m_alpha_star* Q)
-        P = den * (w - 1/x[0] * c *  (sin -cos* Q) + 1/x[0] * u *  tan_phi * (sin - cos * Q) )
+        P = den * (w - 1/x[0] * (sin - cos* Q) *(c - u*tan_phi))
         fric = ( P - u ) * tan_phi
-        resisting_moment = c + fric
+        S = c + fric
 
-        rot_FoS   = (np.sum(resisting_moment)/Osum - x[0])
-        trasl_FoS = (np.sum(resisting_moment * cos)/np.sum(P * sin) - x[0]) 
+        rot_FoS   = (np.sum(S)/Osum - x[0])
+        trasl_FoS = (np.sum(S * cos)/np.sum(P * sin) - x[0]) 
         return [rot_FoS,trasl_FoS]
 
-    # scipy.optimize.newton uses the secant method if not provided with the 
-    # derivative of the cost function. This is what happens here
+
     Lambda=0.3
     root=optimize.root(
             fun=F_GLE, x0=[FoS_Bishop, Lambda],
