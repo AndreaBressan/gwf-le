@@ -116,28 +116,6 @@ def gle (geometry, soil_properties, soil_state, options, f):
     #tan_phi=np.tan(np.radians(soil_properties.friction_angle(x_nodes,y_nodes)))
 
     f_x=f(x_nodes)
-
-    # def P(x):
-    #     m_alpha = cos * (1+1/x[0] * tan_phi * t_nodes)
-    #     m_alpha = np.maximum(m_alpha,0.2)
-    #     m_alpha_star = sin - cos /x[0] * tan_phi
-    #     Q = x[1]*f_x
-    #     den = 1 / (m_alpha + m_alpha_star* Q)
-    #     P = den * (w - 1/x[0] * (sin - cos* Q) *(c - u*tan_phi))
-    #     return P
-    
-    # def rot_FoS(x):
-    #     fric = ( P(x) - u ) * tan_phi
-    #     S = c + fric
-    #     return (np.sum(S)/Osum - x[0])
-    
-    # def trasl_FoS(x):
-    #     fric = ( P(x) - u ) * tan_phi
-    #     S = c + fric
-    #     return (np.sum(S * cos)/np.sum(P(x) * sin) - x[0]) 
-    
-    # def F_GLE (x):
-    #     return [rot_FoS(x),trasl_FoS(x)]
     
     def F_GLE (x):
         m_alpha = cos * (1+1/x[0] * tan_phi * t_nodes)
@@ -151,10 +129,14 @@ def gle (geometry, soil_properties, soil_state, options, f):
 
         rot_FoS   = (np.sum(S)/Osum - x[0])
         trasl_FoS = (np.sum(S * cos)/np.sum(P * sin) - x[0]) 
+        
+        x[1] = np.maximum(x[1],1.)
+        x[1] = np.minimum(x[1],0.)
+        print(x)
         return [rot_FoS,trasl_FoS]
 
 
-    Lambda=0.3
+    Lambda=0.0
     root=optimize.root(
             fun=F_GLE, x0=[FoS_Bishop, Lambda],
             tol=options.tolerance
