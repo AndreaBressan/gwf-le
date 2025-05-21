@@ -117,6 +117,28 @@ def gle (geometry, soil_properties, soil_state, options, f):
 
     f_x=f(x_nodes)
 
+    # def P(x):
+    #     m_alpha = cos * (1+1/x[0] * tan_phi * t_nodes)
+    #     m_alpha = np.maximum(m_alpha,0.2)
+    #     m_alpha_star = sin - cos /x[0] * tan_phi
+    #     Q = x[1]*f_x
+    #     den = 1 / (m_alpha + m_alpha_star* Q)
+    #     P = den * (w - 1/x[0] * (sin - cos* Q) *(c - u*tan_phi))
+    #     return P
+    
+    # def rot_FoS(x):
+    #     fric = ( P(x) - u ) * tan_phi
+    #     S = c + fric
+    #     return (np.sum(S)/Osum - x[0])
+    
+    # def trasl_FoS(x):
+    #     fric = ( P(x) - u ) * tan_phi
+    #     S = c + fric
+    #     return (np.sum(S * cos)/np.sum(P(x) * sin) - x[0]) 
+    
+    # def F_GLE (x):
+    #     return [rot_FoS(x),trasl_FoS(x)]
+    
     def F_GLE (x):
         m_alpha = cos * (1+1/x[0] * tan_phi * t_nodes)
         m_alpha = np.maximum(m_alpha,0.2)
