@@ -100,14 +100,14 @@ def GLE(Ns , xa , ya , Ra , sds_in , sds_out , gamma , c , phi_rad):
     slices['theta_deg'] = np.degrees(slices['theta'] )
     slices['slicebase_inclined'] = slices['slicebase'] / np.cos(slices['theta'])
     
-    # """
-    # distribuzione delle azioni di interstriscia
-    # """
-    # L = abs(slices['x_r'].max() - slices['x_l'].min())
-    # def fx(x):
-    #     fx = np.sin(np.pi*x/L)  # Morgenstern & Price
-    #     # fx = 1                  # Spencer
-    #     return  fx
+    """
+    distribuzione delle azioni di interstriscia
+    """
+    L = abs(slices['x_r'].max() - slices['x_l'].min())
+    def fx(x):
+        fx = np.sin(np.pi*x/L)  # Morgenstern & Price
+        # fx = 1                  # Spencer
+        return  fx
     
     # sv = []
     # for i in range(len(slices)):
@@ -216,67 +216,58 @@ def GLE(Ns , xa , ya , Ra , sds_in , sds_out , gamma , c , phi_rad):
     # res = optimize.newton(FO_f, Fm, tol=1.e-4 , maxiter=200)
     # Jambu = res
 #-----------------------------------------------------------------------------#        
-    # """
-    # 5) Metodo rigoroso (Spencer o Morgestern e Price a seconda di f_x)
-    #     sistema di 2 equazioni (F da rotazione , F da traslazione) in due incognite (F, lambda)
-    # """
-    # """
-    #  in questa versione valuto la fx a meta striscia:
-    #      dX = dE *f(x/2)
-    # """
-#     q0=0.3
-#     f_x = fx(slices['x_middle'].values)
+    """
+    5) Metodo rigoroso (Spencer o Morgestern e Price a seconda di f_x)
+        sistema di 2 equazioni (F da rotazione , F da traslazione) in due incognite (F, lambda)
+    """
+    """
+      in questa versione valuto la fx a meta striscia:
+          dX = dE *f(x/2)
+    """
+    q0=0.3
+    f_x = fx(slices['x_middle'].values)
 
-#     def P(x):
-#         slices['Q'] = x[1]*f_x
-#         m_alpha = np.cos(slices['theta']) * ( 1 + 1/x[0] * np.tan(phi_rad) * np.tan(slices['theta']))
-#         m_alpha_star = np.cos(slices['theta']) * ( np.tan(slices['theta']) - 1/x[0] * np.tan(phi_rad) )
-#         DEN = 1 / (m_alpha + m_alpha_star* slices['Q'])
-#         P = DEN * (slices['W']
-#                    - 1/x[0] * slices['C'] * np.cos(slices['theta'])* (np.tan(slices['theta']) - slices['Q'])
-#                    + 1/x[0] * slices['U'] * np.cos(slices['theta']) * np.tan(phi_rad)* (np.tan(slices['theta']) - slices['Q']))
-#         return P
+    def P(x):
+        slices['Q'] = x[1]*f_x
+        m_alpha = np.cos(slices['theta']) * ( 1 + 1/x[0] * np.tan(phi_rad) * np.tan(slices['theta']))
+        m_alpha_star = np.cos(slices['theta']) * ( np.tan(slices['theta']) - 1/x[0] * np.tan(phi_rad) )
+        DEN = 1 / (m_alpha + m_alpha_star* slices['Q'])
+        P = DEN * (slices['W']
+                    - 1/x[0] * slices['C'] * np.cos(slices['theta']) *                  (np.tan(slices['theta']) - slices['Q'])
+                    + 1/x[0] * slices['U'] * np.cos(slices['theta']) * np.tan(phi_rad)* (np.tan(slices['theta']) - slices['Q']))
+        return P
     
-#     def FoS_m(x):
-#         fric = ( P(x) - slices['U']) * np.tan(phi_rad)
-#         S= slices['C'] + fric
-#         resisting_moment = S
-#         return (np.sum(resisting_moment)/slices['OverMoment'].sum() - x[0])
+    def FoS_m(x):
+        fric = ( P(x) - slices['U']) * np.tan(phi_rad)
+        S= slices['C'] + fric
+        resisting_moment = S
+        return (np.sum(resisting_moment)/slices['OverMoment'].sum() - x[0])
     
-#     def FoS_f(x):
-#         fric = ( P(x) - slices['U']) * np.tan(phi_rad)
-#         S= slices['C'] + fric
-#         res_force = S*np.cos(slices['theta'])
-#         return (np.sum(res_force)/np.sum(P(x)*np.sin(slices['theta'])) - x[0]) 
+    def FoS_f(x):
+        fric = ( P(x) - slices['U']) * np.tan(phi_rad)
+        S= slices['C'] + fric
+        res_force = S*np.cos(slices['theta'])
+        return (np.sum(res_force)/np.sum(P(x)*np.sin(slices['theta'])) - x[0]) 
     
-#     def FoS_func(x):
-#         return([FoS_m(x), FoS_f(x)])
+    def FoS_func(x):
+        return([FoS_m(x), FoS_f(x)])
     
-#     sol = optimize.root(FoS_func, [Bishop, q0])
-#     FoS = sol.x[0]
-#     lambd = sol.x[1]
-#     # print(sol.x)
+    sol = optimize.root(FoS_func, [Bishop, q0])
+    FoS = sol.x[0]
+    lambd = sol.x[1]
+    # print(sol.x)
 #-----------------------------------------------------------------------------#   
     # ingresso e uscita della sds
     slipboundary = [[sds_out , min(soilsurface.loc['A','y'] , sds_out * np.tan(np.radians(SlopeAngle)))] ,
                     [sds_in , soilsurface.loc['B','y']]]
 #-----------------------------------------------------------------------------#
-#     slices['P'] = P(sol.x)
-#     slices['m alpha'] = np.cos(slices['theta']) * ( 1 + 1/FoS * np.tan(phi_rad) * np.tan(slices['theta']))
-#     slices['dE'] = slices['P'] * np.sin(slices['theta']) - 1/FoS*(slices['C'] + (slices['P']- slices['U']) * np.tan(phi_rad)) * np.cos(slices['theta'])
-#     slices['dX'] = lambd * slices['dE']
-    # if slices['dE'].sum() !=0:
-    #     FoS = np.nan
-    # else:
-    #     FoS = FoS
+    slices['P'] = P(sol.x)
+    slices['m alpha'] = np.cos(slices['theta']) * ( 1 + 1/FoS * np.tan(phi_rad) * np.tan(slices['theta']))
+    slices['dE'] = slices['P'] * np.sin(slices['theta']) - 1/FoS*(slices['C'] + (slices['P']- slices['U']) * np.tan(phi_rad)) * np.cos(slices['theta'])
+    slices['dX'] = lambd * slices['dE']
+    if slices['dE'].sum() !=0:
+        FoS = np.nan
+    else:
+        FoS = FoS
     return slices , slipboundary[0] , slipboundary[1] , method , F
 
-
-# soilsurface = geometry(SlopeHeigth , SlopeAngle)[-1]
-# wt = watertable(wtdepth)
-
-# plt.plot(soilsurface['x'], soilsurface['y'] , c = 'black' , linewidth=2)
-# plt.plot(wt['x'], wt['zw'] , c = 'blue' , linewidth=2)
-# for i in range(len(slices)):
-#     plt.plot(slices.iloc[i,[0 , 0]] ,slices.iloc[i,[2, 6]] , color = 'dimgray' ,linewidth=0.5 )
-# plt.plot(slices.iloc[-1,[1 , 1]] ,slices.iloc[-1,[3, 7]] , color = 'dimgray' ,linewidth=0.5 )
