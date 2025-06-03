@@ -39,9 +39,7 @@ class Geometry:
         xs=self.getGroundPlotPoints(num_points)
         gs=self.ground_surface(xs)
         bt=self.bounding_box[1,0]*np.ones_like(gs)
-        inch=2.54
 
-        plt.figure(1,dpi=dpc*inch,figsize=(x_cm/inch,y_cm/inch))
         plt.fill_between(xs, gs, bt, interpolate=True, color=ocra)
         plt.plot(xs, gs, lw=1,color=ocra2)
         plt.ylim((self.bounding_box[1,0],self.bounding_box[1,1]))
@@ -112,8 +110,10 @@ class Options:
         self.quadrature=quadrature
 
 class Result:
-    def __init__(self, factor_of_safety,nodes, depths, weight_forces, resisting_forces, inter_slice_forces,inputs):
-        self.factor_of_safety=factor_of_safety        
+    def __init__(self, method, factor_of_safety,Lambda,nodes, depths, weight_forces, resisting_forces, inter_slice_forces,inputs):
+        self.method=method
+        self.factor_of_safety=factor_of_safety
+        self.Lambda=Lambda       
         self.nodes=nodes
         self.depths=depths
         self.weight_forces=weight_forces

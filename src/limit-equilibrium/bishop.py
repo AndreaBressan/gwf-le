@@ -10,6 +10,7 @@ Bishop limit equilibrium method
 import scipy.optimize as optimize
 import numpy as np
 import base_classes as bc
+from slices_data import slices_data 
 
 
 def bishop (geometry, soil_properties, soil_state, options):
@@ -52,24 +53,21 @@ def bishop (geometry, soil_properties, soil_state, options):
         - program inputs
     """
 
-    quad=options.quadrature(geometry.landslide_interval)
-    #"geometric properties"
-    x_nodes=quad.nodes
-    y_nodes=geometry.slip_surface(x_nodes)
-    t_nodes=geometry.slip_tangent(x_nodes)
-    l_nodes=np.sqrt(1+t_nodes**2)
-    cos=1/l_nodes
-    sin=np.sqrt(1-cos**2)*np.sign(t_nodes)
-    #"soil properties" 
-    tan_phi=np.tan(np.radians(soil_properties.friction_angle(x_nodes,y_nodes)))
-    #"pressures" 
-    u=soil_state.pore_pressure(x_nodes,y_nodes)*soil_state.saturation(x_nodes,y_nodes)*l_nodes
-    w=soil_state.integrated_density(x_nodes,y_nodes)
-    c=soil_properties.cohesion(x_nodes,y_nodes)*l_nodes
+    T=slices_data (geometry, soil_properties, soil_state, options)
+    I=(geometry, soil_properties, soil_state, options)
+    return bishop_with_tuple(T,I)
+
+
+def bishop_with_tuple(T,I):
+    (x_nodes,y_nodes,t_nodes,l_nodes,
+     cos,sin,
+     tan_phi,
+     u,w,c,
+     quad_weights)=T
     p=w*cos  #"Fellenius method to init iteration of the Bishop method
 
-    R=(c+(p-u)*tan_phi)*quad.weights
-    O=w*sin*quad.weights
+    R=(c+(p-u)*tan_phi)*quad_weights
+    O=w*sin*quad_weights
     Osum=np.sum(O,0)
     Fellenius_result=np.sum(R,0)/Osum
 
@@ -79,23 +77,28 @@ def bishop (geometry, soil_properties, soil_state, options):
         m_alpha = np.maximum(m_alpha,0.2)
         p=1/m_alpha*(w-1/old_fos*sin*(c-u*tan_phi))
         nonlocal R
-        R=(c+(p-u)*tan_phi)*quad.weights
+        R=(c+(p-u)*tan_phi)*quad_weights
         increment = old_fos - np.sum(R,0)/Osum
         return increment
 
     # scipy.optimize.newton uses the secant method if not provided with the 
     # derivative of the cost function. This is what happens here
+
+    options=I[-1]
+    geometry=I[0]
+    soil_properties=I[1]
     return bc.Result(
+        method="Bishop",
         factor_of_safety = optimize.newton(
             func=FO_m, x0=Fellenius_result,
             tol=options.tolerance,
             maxiter=options.max_iteration
             ),
+        Lambda = 0.0,
         nodes=np.vstack((x_nodes,y_nodes)),
         depths=geometry.ground_surface(x_nodes)-y_nodes,
-        weight_forces=w*quad.weights,
+        weight_forces=w*quad_weights,
         resisting_forces=R,
         inter_slice_forces=np.zeros((2,len(x_nodes))),
-        inputs=(geometry, soil_properties, soil_state, options)
+        inputs=I
         )
-
