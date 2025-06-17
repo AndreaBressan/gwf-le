@@ -5,7 +5,7 @@ sys.path.append("../limit-equilibrium")
 from base_classes import SoilProperties,SoilState,UniformQuadrature,Options,np,plt
 from circularSlipSurface import circularSlipSurface
 from bishop import bishop
-from gle_LL import spencer,morgerstern_price
+from gle import spencer,morgerstern_price
 
 import matplotlib as mpl
 mpl.rcParams['figure.dpi'] = 300
@@ -48,8 +48,7 @@ time_duration = time_end - time_start
 print(f'Took {time_duration:.3f} seconds')
 fig=geometry.plot(400)
 plt.savefig("geometry.svg")
-print('Morgerstern & Price:', round(res.factor_of_safety,5))
-
+print(f'{res.method}:, {res.factor_of_safety:.3f} with Lambda {res.Lambda:.3f}')
 res=[]
 time_start = time.perf_counter()
 res = spencer(geometry,soil_properties,soil_state,options)
@@ -58,7 +57,7 @@ time_duration = time_end - time_start
 print(f'Took {time_duration:.3f} seconds')
 fig=geometry.plot(400)
 plt.savefig("geometry.svg")
-print('Spencer:', round(res.factor_of_safety,5))
+print(f'{res.method}:, {res.factor_of_safety:.3f} with Lambda {res.Lambda:.3f}')
 
 res=[]
 time_start = time.perf_counter()
@@ -68,4 +67,4 @@ time_duration = time_end - time_start
 print(f'Took {time_duration:.3f} seconds')
 fig=geometry.plot(400)
 plt.savefig("geometry.svg")
-print('Bishop:', round(res.factor_of_safety,5))
+print(f'{res.method}:, {res.factor_of_safety:.3f} with Lambda {res.Lambda:.3f}')
