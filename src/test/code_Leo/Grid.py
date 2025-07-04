@@ -92,7 +92,6 @@ def grid():
                             'punto uscita' : PO , 'pt uscita-y' : POy})
     
     grid = grid.mask(grid['xc'] > soilsurface.loc['B','x']).dropna()
-    # grid = grid.mask(grid['Radius'] > A*10).dropna()
     grid = grid.reset_index()
     #-------------------------------------------------------------------------#
     # ora elimino i cerchi che escono dal pendio prima dell'uscita

@@ -26,14 +26,14 @@ soilsurface = geometry(SlopeHeigth , SlopeAngle)[-1]
  Soil Parameters
 """
 gamma = [18. , 'kN/m3'] # saturated unit weight of soil
-c = [5.0 , 'kPa'] # soil coesion
+c = [124.7 , 'kPa'] # soil coesion
 phi = [30. , 'deg'] # friction angle
 phi_rad = np.radians(phi[0])
 ##----------------------------------------------------------------------------#
-Ns = 20
+Ns = 50
 #-----------------------------------------------------------------------------#
 def valid(sds_in , sds_out , eta):
-    if sds_out[0] >= soilsurface.loc['A'][0]:
+    if sds_out[0] >= soilsurface.loc['A','x']:
         eta_min = np.degrees(np.arctan(sds_in[1]/ sds_in[0]))
     else:
         m_perp_in_0 =  - sds_in[0]/sds_in[1]
@@ -45,14 +45,10 @@ def valid(sds_in , sds_out , eta):
 
 
 def func(v):
-    """
-    so che non dovrei farlo ma non capisco come funzionano le tolleranze
-    """
-    # x_in , x_out , eta = np.round(v[0] , 5) , np.round(v[1] , 5) , np.round(v[2] , 5)
     x_in , x_out , eta = v[0] , v[1] , v[2]
 
     sds_in = [x_in, SlopeHeigth]
-    sds_out = [x_out, x_out * np.tan(np.radians(SlopeAngle)) if x_out > soilsurface.loc['A'][0] else soilsurface.loc['A'][1]]
+    sds_out = [x_out, x_out * np.tan(np.radians(SlopeAngle)) if x_out > soilsurface.loc['A','x'] else soilsurface.loc['A','y']]
     func.i+=1  
     if valid(sds_in , sds_out , eta):
         xa , ya , Ra = circ_2pts_tan(sds_in , sds_out , np.tan(np.radians(eta)))
@@ -83,7 +79,6 @@ FS = FoS
 grid['Safety Factor'] = FS
 grid = grid.dropna(how='all')
 grid = grid.mask(grid['Safety Factor'] < 0).dropna()
-grid = grid.mask(grid['Safety Factor'] > 10).dropna()
 FactorofSafety = min(grid['Safety Factor'])
 mask = FactorofSafety
 
@@ -92,9 +87,9 @@ grid = grid.sort_index()
 ##----------------------------------------------------------------------------#
 
 nomi = ['F' , 'sds_in' , 'sds_out' , 'eta' , 'xc' , 'yc' , 'R']
-A = max(SlopeHeigth , soilsurface.loc['B'][0])
-bounds = ((soilsurface.loc['B'][0]+SlopeHeigth/25*0 , 3*A) ,
-          (-3*A , soilsurface.loc['B'][0]/4) , 
+A = max(SlopeHeigth , soilsurface.loc['B','x'])
+bounds = ((soilsurface.loc['B','x']+SlopeHeigth/25*0 , 3*A) ,
+          (-3*A , soilsurface.loc['B','x']/4) , 
           ( grid['angolo entrata'].min(), 90.))
 """
  trial: vettore prova: ascissa ingresso , ascissa uscita , angolo ingresso

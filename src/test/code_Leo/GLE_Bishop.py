@@ -255,7 +255,7 @@ def GLE(Ns , xa , ya , Ra , sds_in , sds_out , gamma , c , phi_rad):
     sol = optimize.root(FoS_func, [Bishop, q0])
     FoS = sol.x[0]
     lambd = sol.x[1]
-    # print(sol.x)
+    print(sol.x)
 #-----------------------------------------------------------------------------#   
     # ingresso e uscita della sds
     slipboundary = [[sds_out , min(soilsurface.loc['A','y'] , sds_out * np.tan(np.radians(SlopeAngle)))] ,

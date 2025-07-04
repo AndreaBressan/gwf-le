@@ -19,7 +19,7 @@ import pandas as pd
         B = [ SlopeHeigth / tan(SlopeAngle) , SlopeHeigth ] crest of the slope
 """
 SlopeHeigth = 3.
-SlopeAngle = 45.
+SlopeAngle = 85.
 
 def geometry(SlopeHeigth , SlopeAngle):
     

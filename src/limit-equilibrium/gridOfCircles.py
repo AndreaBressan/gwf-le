@@ -20,7 +20,10 @@ def gridOfCircles(ground_surface, bounding_box, in_interval=None,out_interval=No
     for i in in_pts:
         for o in out_pts:
             eta_min=computeEtaMinForSurface(ground_surface,bounding_box,i,o)
+            # eta_min=computeEtaMinForSurface_EngineeredSlope(ground_surface,bounding_box,i,o) # usa questo nel metodo esplicito del calcolo di eta
             eta_max=np.pi/2
+            # if eta_min < 0: 
+            #     continue
             num_eta=np.floor((eta_max-eta_min)/min_eta_inc)
             eta=np.linspace(eta_min,eta_max,int(num_eta))
             for e in eta:
@@ -38,7 +41,7 @@ def computeEtaMinForSurface(ground_surface,bounding_box,in_pt,out_pt,npts=500,to
     test_pts=test_pts[1:-2]
     gl=gl[1:-2]
     
-    for iter in range(0,20):
+    for iter in range(0,13):
         mid_surf=circularSlipSurface.fromInOutAndEta(ground_surface,bounding_box,in_pt,out_pt,eta_mid)
         test=mid_surf.slip_surface(test_pts)
         if np.all(gl>test):
@@ -47,6 +50,30 @@ def computeEtaMinForSurface(ground_surface,bounding_box,in_pt,out_pt,npts=500,to
             eta_min=eta_mid
         eta_mid=(eta_max+eta_min)/2
     return eta_mid
+
+# scritta da Leo per una scarpa
+def computeEtaMinForSurface_EngineeredSlope(ground_surface,bounding_box,in_pt,out_pt,npts=500,tol=1e-4):
+    test_pts=np.linspace(in_pt,out_pt,npts)
+    # prova
+    gl=ground_surface(test_pts)
+    h = gl.max()
+    In_pt , Out_pt = in_pt / h , out_pt/h
+    eta_max=np.pi/2
+    if out_pt >= 0:
+        eta_m = np.arctan((gl[0]-gl[-1])/(in_pt-out_pt))
+    else:
+        # # equazione andrea
+        # surf=circularSlipSurface.fromThreePoints(ground_surface, bounding_box, in_pt, out_pt)
+        # r=surf.radius
+        # O = np.array([out_pt , ground_surface(out_pt)])
+        # I = np.array([in_pt , ground_surface(in_pt)])
+        # l=np.linalg.norm(O-I)
+        # eta_star = np.arctan((gl[0]-gl[-1])/(in_pt-out_pt))
+        # eta_min = eta_star + np.arcsin(l/(2*r))
+        #equazione di domenico
+        eta_m = np.arctan((2*In_pt - Out_pt)/(In_pt**2-In_pt*Out_pt-1))
+    eta_min = eta_m +np.radians(.01)
+    return eta_min
     
 class GridOptions:
     def __init__(self,in_interval=None,out_interval=None,min_eta_inc=np.radians(5),num_in_pts=None,num_out_pts=None,in_pts=None,out_pts=None):

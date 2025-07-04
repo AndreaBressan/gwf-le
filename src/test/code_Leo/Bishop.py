@@ -60,7 +60,7 @@ def Bishop(Ns , xa , ya , Ra , sds_in , sds_out , gamma , c , phi_rad):
     slices['y_middle_top'] = slices[['y_l_top', 'y_r_top']].mean(axis = 1)
     slices['y_l_bot'] = ya - ( Ra**2 - ( slices['x_l'] - xa )**2 )**0.5
     slices['y_r_bot'] = ya - ( Ra**2 - ( slices['x_r'] - xa )**2 )**0.5
-    slices['y_r_bot'].fillna(slices['y_r_top'] , axis = 0 , inplace=True)
+    slices['y_r_bot'] = slices['y_r_bot'].fillna(slices['y_r_top'] , axis = 0)
     # print(slices.loc[24,'y_r_bot'])
     #--------------------#
     slices['y_middle_bot'] = slices[['y_l_bot', 'y_r_bot']].mean(axis = 1)
@@ -131,7 +131,7 @@ def Bishop(Ns , xa , ya , Ra , sds_in , sds_out , gamma , c , phi_rad):
     """
     def FO_m(x):
         slices['m alpha'] = np.cos(slices['theta']) * ( 1 + 1/x * np.tan(phi_rad) * np.tan(slices['theta']))
-        slices['m alpha'].mask(slices['m alpha']<0.2 , 0.2 , axis=0 ,  inplace=True)
+        slices['m alpha'] = slices['m alpha'].mask(slices['m alpha']<0.2 , 0.2 , axis=0)
         slices['P'] = 1/slices['m alpha'] * (slices['W'] - 1/x * np.sin(slices['theta']) * (slices['C'] - slices['U'] * np.tan(phi_rad)))
         slices['fric'] = ( slices['P'] - slices['U']) * np.tan(phi_rad)
         slices['S'] = slices['C'] + slices['fric']
@@ -151,7 +151,7 @@ def Bishop(Ns , xa , ya , Ra , sds_in , sds_out , gamma , c , phi_rad):
         method = 'Bishop'
 #-----------------------------------------------------------------------------#   
     # ingresso e uscita della sds
-    slipboundary = [[sds_out , min(soilsurface.loc['A'][1] , sds_out * np.tan(np.radians(SlopeAngle)))] ,
-                    [sds_in , soilsurface.loc['B'][1]]]
+    slipboundary = [[sds_out , min(soilsurface.loc['A','y'] , sds_out * np.tan(np.radians(SlopeAngle)))] ,
+                    [sds_in , soilsurface.loc['B','y']]]
 #-----------------------------------------------------------------------------#
     return slices , slipboundary[0] , slipboundary[1] , method , F    

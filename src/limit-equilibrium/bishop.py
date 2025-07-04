@@ -87,13 +87,19 @@ def bishop_with_tuple(T,I):
     options=I[-1]
     geometry=I[0]
     soil_properties=I[1]
+    Bishop_result = optimize.newton(
+                func=FO_m, x0=Fellenius_result,
+                tol=options.tolerance,
+                maxiter=options.max_iteration
+                )
+    if Bishop_result<Fellenius_result:
+        factor_of_safety = Fellenius_result
+    else:
+        factor_of_safety = Bishop_result
+        
     return bc.Result(
         method="Bishop",
-        factor_of_safety = optimize.newton(
-            func=FO_m, x0=Fellenius_result,
-            tol=options.tolerance,
-            maxiter=options.max_iteration
-            ),
+        factor_of_safety = factor_of_safety,
         Lambda = 0.0,
         nodes=np.vstack((x_nodes,y_nodes)),
         depths=geometry.ground_surface(x_nodes)-y_nodes,
