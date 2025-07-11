@@ -15,7 +15,7 @@ mpl.rcParams['figure.dpi'] = 300
 
 # parametrizzo la geometria e le bounding box in funzione dell'angolo
 # beta = np.arange(15, 95 , 5)
-beta = 40
+beta = 75
 slope_height = 3.
 slope_base = slope_height / np.tan(np.radians(beta))
 dist_max = max(slope_base,slope_height)
@@ -24,12 +24,13 @@ ground_surface=(lambda x : 0*(x<=0)
                 + x*np.tan(np.radians(beta)) *(0<x)*(x<=slope_base) 
                 + slope_height*(x>slope_base))
 bounding_box=np.array([[-3*dist_max,3*dist_max],[-1.5*slope_height,1.5*slope_height]])
+
 gOptions=GridOptions(
-    in_interval=[1.*slope_base,1*dist_max+slope_base],
-    out_interval=[-1*dist_max,1/4*slope_base],
+    in_pts=[1.*slope_base,1/3*dist_max+slope_base, 2/3*dist_max+slope_base, 1*dist_max+slope_base],
+    out_pts=[-1*dist_max,-1/2*dist_max ,-1/4*dist_max, 0., 1/8*slope_base, 1/4*slope_base],
     min_eta_inc=np.radians(5),
-    num_in_pts=20,
-    num_out_pts=20)
+    num_in_pts=None,
+    num_out_pts=None)
 
 # parametro del matriale
 M = np.round(np.concatenate((np.linspace(0 , 0.2 , 21),
@@ -218,6 +219,28 @@ ax2.set_ylim(0,100)
 
 plt.show()
 plt.close()
+
+# Crea la figura e gli assi
+fig, ax = plt.subplots()
+
+# Primo asse y (sinistro)
+norm_data['F/tan(phi)'].plot(ax=ax, label=f'{beta:.0f}°')
+ax.set_ylabel('F')
+
+
+# # Gestione legende (combinate senza 'right')
+# h1, l1 = ax1.get_legend_handles_labels()
+# h2, l2 = ax2.get_legend_handles_labels()
+# ax1.legend(h1 + h2, l1 + l2, loc='best')
+
+
+#limiti
+ax.set_xlim(0,10)
+ax.set_ylim(0,50)
+
+plt.show()
+plt.close()
+
 
 with pd.ExcelWriter(f"Bishop={beta:.0f}°.xlsx" ) as writer: #first iter
     real_data.to_excel(writer, sheet_name='real data')
