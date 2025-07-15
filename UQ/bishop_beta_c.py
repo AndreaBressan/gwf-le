@@ -63,7 +63,7 @@ class bishop_beta_c(umbridge.Model):
                 ) 
             )
         res=simplexComputation(bishop, ground_surface,bounding_box,soil_properties,soil_state,gOptions,mOptions)[0]
-        return [[res.factor_of_safety]]
+        return [[res]]
 
     def supports_evaluate(self):
         return True
