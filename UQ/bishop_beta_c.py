@@ -28,7 +28,7 @@ class bishop_beta_c(umbridge.Model):
         H=3
         tan_beta=np.tan(np.radians(beta))
         slope_end=H/tan_beta
-        dist_max=np.max(slope_end,H)
+        dist_max=max(slope_end,H)
 
         ground_surface=lambda x : 0*(x<=0)+ tan_beta*x*(0<x)*(x<=slope_end) + H*(x>slope_end)
         bounding_box=np.array([[-5,dist_max+5],[-5,dist_max+5]])
@@ -62,8 +62,12 @@ class bishop_beta_c(umbridge.Model):
                 num=50
                 ) 
             )
-        res=simplexComputation(bishop, ground_surface,bounding_box,soil_properties,soil_state,gOptions,mOptions)[0]
-        return [[res]]
+        bounds = ((1*slope_end,5*dist_max+slope_end), 
+          (-5*dist_max,1/4*slope_end), 
+          (0., 90))
+        res=simplexComputation(bishop, ground_surface,bounding_box,soil_properties,soil_state,gOptions,mOptions,bounds)[0]
+        print(res)
+        return [[res.fun]]
 
     def supports_evaluate(self):
         return True
