@@ -1,3 +1,5 @@
+% prior to this, run server as: python3 bishop_beta_c.py
+
 clear
 clc
 
@@ -35,10 +37,19 @@ plot_sparse_grids_interpolant(S,Sr,domain,f_values,'with_f_values');
 
 
 sample_size = 1000;
-M = get_interval_map(domain(1,:),domain(2,:),'uniform');
-MC_sample = M(rand(N,sample_size)*2-1);
+% M = get_interval_map(domain(1,:),domain(2,:),'uniform');
+% MC_sample = M(rand(N,sample_size)*2-1);
 
-% plot_sparse_grid(asreduced(MC_sample));
+beta_meas =  30;
+beta_st_dev = 2;
+
+logc_meas = -4;
+logc_st_dev = 0.1;
+
+MC_sample = [randn(1,sample_size)*beta_st_dev + beta_meas;
+             randn(1,sample_size)*logc_st_dev + logc_meas;];
+
+plot_sparse_grid(asreduced(MC_sample));
 
 MC_values = interpolate_on_sparse_grid(S,Sr,f_values,MC_sample);
 
