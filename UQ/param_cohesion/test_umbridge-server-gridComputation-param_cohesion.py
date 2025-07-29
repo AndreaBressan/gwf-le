@@ -1,4 +1,5 @@
-# run this script as python3 test_output.py http://localhost:4242  (?? correct??) 
+# first, run the server as: python3 umbridge-server-gridComputation-param_cohesion.py 
+# run this script as:       python3 test_umbridge-server-gridComputation-param_cohesion.py http://localhost:4242  
 
 import argparse
 import umbridge
