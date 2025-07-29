@@ -17,7 +17,7 @@ mpl.rcParams['figure.dpi'] = 300
 
 # parametrizzo la geometria e le bounding box in funzione dell'angolo
 # beta = np.arange(15, 95 , 5)
-beta = 75
+beta = 45
 slope_height = 3.
 slope_base = slope_height / np.tan(np.radians(beta))
 dist_max = max(slope_base,slope_height)
@@ -217,6 +217,6 @@ plt.show()
 plt.close()
 
 
-with pd.ExcelWriter(f"Bishop={beta:.0f}°.xlsx" ) as writer: #first iter
-    real_data.to_excel(writer, sheet_name='real data')
-    norm_data.to_excel(writer, sheet_name='norm data')
+# with pd.ExcelWriter(f"Bishop={beta:.0f}°.xlsx" ) as writer: #first iter
+#     real_data.to_excel(writer, sheet_name='real data')
+#     norm_data.to_excel(writer, sheet_name='norm data')
