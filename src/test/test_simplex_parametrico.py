@@ -1,3 +1,4 @@
+# HEAD
 import numpy as np
 import pandas as pd
 import sys
@@ -194,3 +195,4 @@ norm_data = res_data(M)[1]
 with pd.ExcelWriter(f"Bishop={beta:.0f}°.xlsx" ) as writer: #first iter
     real_data.to_excel(writer, sheet_name='real data')
     norm_data.to_excel(writer, sheet_name='norm data')
+
