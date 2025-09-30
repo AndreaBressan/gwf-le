@@ -82,8 +82,8 @@ class circularSlipSurface(base_classes.Geometry):
             d=(1-np.cos(alpha))*r
             c=m+(r-d)*ortho(m,in_pt)
         else:
-            r=+np.Infinity
-            c=np.array([(-1)**int(ux>ex)*np.Infinity,np.Infinity])
+            r=+np.inf
+            c=np.array([(-1)**int(ux>ex)*np.inf,np.inf])
             d=0
         return cls(ground_surface=ground_surface,
             bounding_box=bounding_box,
@@ -108,8 +108,8 @@ class circularSlipSurface(base_classes.Geometry):
         m=(out_pt+in_pt)/2
         nue=np.linalg.norm(out_pt-in_pt)
         if d==0:
-            r=+np.Infinity
-            c=np.array([(-1)**int(ux>ex)*np.Infinity,np.Infinity])
+            r=+np.inf
+            c=np.array([(-1)**int(ux>ex)*np.inf,np.inf])
             alpha=0.0
             if ux==ex and uy==ey:
                 eta=np.NaN
