@@ -62,7 +62,7 @@ def bishop_with_tuple(T,I):
     (x_nodes,y_nodes,t_nodes,l_nodes,
      cos,sin,
      tan_phi,
-     u,w,c,
+     u,w,c,depth,
      quad_weights)=T
     p=w*cos  #"Fellenius method to init iteration of the Bishop method
 

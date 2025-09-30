@@ -69,9 +69,9 @@ def gle (geometry, soil_properties, soil_state, options, f, name="GLE with given
     (x_nodes,y_nodes,t_nodes,l_nodes,
      cos,sin,
      tan_phi,
-     u,w,c,
+     u,w,c,depth,
      quad_weights)=T
-     
+
     res_bishop= bishop_with_tuple(T,I)
     FoS_Bishop=res_bishop.factor_of_safety
 
@@ -95,8 +95,7 @@ def gle (geometry, soil_properties, soil_state, options, f, name="GLE with given
         P=np.maximum(p*quad_weights,0)                           # force normal to the slice always compressive
         dE = P*sin - S*cos/x[0]                                  # increment in the normal force at the side of the slices
         E  = np.maximum(np.cumsum(dE), 1.e-6)                    # normal force at the side of each slice, oriented as x_nodes, always compressive
-        depth = geometry.ground_surface(x_nodes)-y_nodes         # height of the slice
-        c_vert = soil_properties.cohesion(x_nodes,y_nodes)*depth # cohesion along the height of the slice
+        c_vert = c/l_nodes*depth                                 # cohesion along the height of the slice
         X  = np.minimum(Q*E , c_vert + E*tan_phi)                # shear force at the side of each slice, limited by the strength of the material
         Q_check = X/E
 

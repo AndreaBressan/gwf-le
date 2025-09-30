@@ -42,4 +42,5 @@ def slices_data (geometry, soil_properties, soil_state, options):
     u=soil_state.pore_pressure(x_nodes,y_nodes)*soil_state.saturation(x_nodes,y_nodes)*l_nodes
     w=soil_state.integrated_density(x_nodes,y_nodes)
     c=soil_properties.cohesion(x_nodes,y_nodes)*l_nodes
-    return (x_nodes,y_nodes,t_nodes,l_nodes,cos,sin,tan_phi,u,w,c,quad.weights)
+    depth = geometry.ground_surface(x_nodes)-y_nodes
+    return (x_nodes,y_nodes,t_nodes,l_nodes,cos,sin,tan_phi,u,w,c,depth,quad.weights)

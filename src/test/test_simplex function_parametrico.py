@@ -11,6 +11,9 @@ from circularSlipSurface import circularSlipSurface
 import scipy.optimize as optimize
 import time
 
+from pyinstrument import Profiler
+profile=Profiler(interval=0.01)
+
 # Aggiunta da Leo: così funziona
 import matplotlib as mpl
 mpl.rcParams['figure.dpi'] = 300
@@ -63,11 +66,13 @@ mOptions=Options(
         ) 
     )
 
+profile.start()
+
 time_start=time.perf_counter()
 bounds = ((1*slope_base,5*dist_max+slope_base) ,
           (-5*dist_max,1/4*slope_base) , 
           (0., 90))
-  
+
 zero=[]
 calls=[]
 end_geo=[]
@@ -91,7 +96,7 @@ for j in range(len(M)):
     print(f'M={M[j]:.2f} : after-optimization-FOS={zero[j].fun:.3f}, using {calls[j]:d} evaluations')
     
 
-
+profile.stop()
 time_duration = time.perf_counter()- time_start
 print(f'\nThe simplex method took {time_duration:.3f}s per start, {time_duration:.3f}s in total')
 
@@ -220,3 +225,5 @@ plt.close()
 # with pd.ExcelWriter(f"Bishop={beta:.0f}°.xlsx" ) as writer: #first iter
 #     real_data.to_excel(writer, sheet_name='real data')
 #     norm_data.to_excel(writer, sheet_name='norm data')
+profile.print()
+profile.open_in_browser()
