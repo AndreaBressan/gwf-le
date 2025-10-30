@@ -21,7 +21,7 @@ echo
 
 # Prima assicuriamoci che i moduli siano aggiornati
 echo "1. Aggiornamento moduli limit-equilibrium..."
-./setup_qgis_plugin.sh
+#./setup_qgis_plugin.sh
 echo
 
 # Rimuovi installazione precedente se esiste

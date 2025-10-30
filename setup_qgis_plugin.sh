@@ -24,6 +24,8 @@ cp "$LE_SOURCE_DIR/gle.py" "$LE_DEST_DIR/"
 cp "$LE_SOURCE_DIR/gridComputation.py" "$LE_DEST_DIR/"
 cp "$LE_SOURCE_DIR/gridOfCircles.py" "$LE_DEST_DIR/"
 cp "$LE_SOURCE_DIR/slices_data.py" "$LE_DEST_DIR/"
+cp "$LE_SOURCE_DIR/quadrature.py" "$LE_DEST_DIR/"
+cp "$LE_SOURCE_DIR/gridSimplexComputation.py" "$LE_DEST_DIR/"
 
 # Crea __init__.py se non esiste
 if [ ! -f "$LE_DEST_DIR/__init__.py" ]; then
