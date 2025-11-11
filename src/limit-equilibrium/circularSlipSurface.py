@@ -76,7 +76,7 @@ class circularSlipSurface(base_classes.Geometry):
         in_pt=np.array([ex,ey])
         m=(out_pt+in_pt)/2
         nue=np.linalg.norm(out_pt-in_pt)
-        alpha=eta-np.arcsin((m[1]-out_pt[1])/nue*2)
+        alpha=eta+np.sign(out_x-in_x)*np.arcsin((m[1]-out_pt[1])/nue*2)
         if alpha>0:
             r=nue/np.sin(alpha)/2
             d=(1-np.cos(alpha))*r

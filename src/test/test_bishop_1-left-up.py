@@ -7,11 +7,11 @@ from circularSlipSurface import circularSlipSurface
 from bishop import bishop
 
 geometry=circularSlipSurface.fromInOutAndEta(
-    ground_surface=lambda x : 0*(x<=0)+ x*(0<x)*(x<=3) + 3*(x>3),
+    ground_surface=lambda x : 0*(x>3)+ (3-x)*(0<x)*(x<=3) + 3*(x<=0),
     bounding_box=np.array([[-5,10],[-5,9]]),
-    in_x=5.0,
-    out_x=0.0,
-    eta=np.radians(70)
+    in_x=-2.0,
+    out_x=3.0,
+    eta=np.radians(110)
     )
 fig=geometry.plot(400)
 fig.show()

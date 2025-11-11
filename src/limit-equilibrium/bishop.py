@@ -66,16 +66,21 @@ def bishop_with_tuple(T,I):
      quad_weights)=T
     p=w*cos  #"Fellenius method to init iteration of the Bishop method
 
+    sign=np.sign(y_nodes[-1]-y_nodes[1])
     R=(c+(p-u)*tan_phi)*quad_weights
-    O=w*sin*quad_weights
+    O=sign*w*sin*quad_weights
     Osum=np.sum(O,0)
     Fellenius_result=np.sum(R,0)/Osum
 
     #"start iteration of Bishop method"
     def FO_m(old_fos):
-        m_alpha = cos * (1+1/old_fos * tan_phi * t_nodes)
+        # TODO fix me
+        # BUG here
+        # t_nodes cambia significato rispetto alla fisica a seconda che il 
+        # pendio salga o scenda da sx a dx
+        m_alpha = cos * (1+1/old_fos * tan_phi * t_nodes*sign) 
         m_alpha = np.maximum(m_alpha,0.2)
-        p=1/m_alpha*(w-1/old_fos*sin*(c-u*tan_phi))
+        p=1/m_alpha*(w-1/old_fos*sin*(c-u*tan_phi)*sign)
         nonlocal R
         R=(c+(p-u)*tan_phi)*quad_weights
         increment = old_fos - np.sum(R,0)/Osum
