@@ -21,9 +21,10 @@ class circularSlipSurface(base_classes.Geometry):
         self.slip_tangent= lambda x : (x-self.center[0])/np.sqrt( self. radius**2-(self.center[0]-x)**2)
 
     @classmethod
-    def fromCenterAndRadious(cls, ground_surface, bounding_box, center, radius):
+    def fromCenterAndRadius(cls, ground_surface, bounding_box, center, radius):
         r=radius
         c=center
+        xmin , xmax = bounding_box[0] , bounding_box[1]
         xd=[max(xmin,c[0]-r), min(xmax,c[0]+r)]
         f=lambda x:  r**2-(c[0]-x)**2-(c[1]-ground_surface(x))**2
         def bisect(f,l,r,fl,fr,tol):
@@ -43,7 +44,7 @@ class circularSlipSurface(base_classes.Geometry):
         sc=sc[-2*part:len(sc)-2*(part-1)+1]
     
         xs=bisect(f,xs[sc],xs[sc+1],ys[sc],ys[sc+1],1e-10)
-        ys=profilo(xs)
+        ys=ground_surface(xs)
 
         pos= int(ys[0]>=ys[1])
         out_pt=np.array([xs[pos],ys[pos]])
@@ -81,8 +82,8 @@ class circularSlipSurface(base_classes.Geometry):
             d=(1-np.cos(alpha))*r
             c=m+(r-d)*ortho(m,in_pt)
         else:
-            r=+np.Infinity
-            c=np.array([(-1)**int(ux>ex)*np.Infinity,np.Infinity])
+            r=+np.inf
+            c=np.array([(-1)**int(ux>ex)*np.inf,np.inf])
             d=0
         return cls(ground_surface=ground_surface,
             bounding_box=bounding_box,
@@ -107,8 +108,8 @@ class circularSlipSurface(base_classes.Geometry):
         m=(out_pt+in_pt)/2
         nue=np.linalg.norm(out_pt-in_pt)
         if d==0:
-            r=+np.Infinity
-            c=np.array([(-1)**int(ux>ex)*np.Infinity,np.Infinity])
+            r=+np.inf
+            c=np.array([(-1)**int(ux>ex)*np.inf,np.inf])
             alpha=0.0
             if ux==ex and uy==ey:
                 eta=np.NaN
@@ -128,6 +129,39 @@ class circularSlipSurface(base_classes.Geometry):
             middle=m,
             eta=eta,
             alpha=alpha)
+    
+    @classmethod
+    def fromThreePoints(cls, ground_surface, bounding_box, in_x, out_x):
+        
+        in_pt = np.array([in_x , ground_surface(in_x)])
+        out_pt = np.array([out_x , ground_surface(out_x)])
+        ZERO = np.array([0,0])
+    
+        # Calcolo dei determinanti
+        temp = in_pt[0]**2 + in_pt[1]**2
+        bc = (out_pt[0]**2 + out_pt[1]**2 - temp) / 2.0
+        cd = (temp - ZERO[0]**2 - ZERO[1]**2) / 2.0
+        det = (out_pt[0] - in_pt[0])*(in_pt[1] - ZERO[1]) - (in_pt[0] - ZERO[0])*(out_pt[1] - in_pt[1])
+        
+        # Coordinate del centro
+        cx = (bc * (in_pt[1] - ZERO[1]) - cd * (out_pt[1] - in_pt[1])) / det
+        cy = ((out_pt[0] - in_pt[0]) * cd - (in_pt[0] - ZERO[0]) * bc) / det
+    
+        # Raggio calcolato come distanza euclidea tra centro e uno dei punti
+        dx = cx - out_pt[0]
+        dy = cy - out_pt[1]
+        r = (dx**2 + dy**2)**0.5
+        
+        return cls(ground_surface=ground_surface,
+            bounding_box=bounding_box,
+            center=(cx, cy),
+            radius=r,
+            out_pt=out_pt,
+            in_pt=in_pt,
+            dist=None,
+            middle=None,
+            eta=None,
+            alpha=None)
 
 
 def ortho(pt1,pt2):

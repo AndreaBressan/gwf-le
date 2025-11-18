@@ -8,6 +8,7 @@ Input and output formats for limit equilibrium methods
 """
 import matplotlib.pyplot as plt
 import numpy as np
+import scipy.optimize as optimize
 
 class Geometry:
     """ Geometry describes terrain and a landslide by using the following data

@@ -80,6 +80,11 @@ class TheRaiseOfSlopesPlugin:
         self.profile_distances = []
         self.profile_elevations = []
         
+        # Salva i dati del profilo per calcoli successivi
+        self.profile_p1 = None
+        self.profile_p2 = None
+        self.profile_raster_layer = None
+        
         # Memorizza TUTTE le superfici critiche calcolate (lista di dict)
         # Ogni item: {'search': 'grid'|'simplex', 'method': 'Bishop'|..., 'x': np.array, 'y': np.array, 'fs': float}
         self.slip_surfaces = []
@@ -106,6 +111,7 @@ class TheRaiseOfSlopesPlugin:
         """Mostra il dialog principale."""
         if not self.dlg:
             self.dlg = ProfileDialog()
+            self.dlg.set_plugin(self)  # Passa il riferimento al plugin
             self.dlg.startSelectionRequested.connect(self._start_point_selection)
             self.dlg.computeProfileRequested.connect(self._compute_profile)
             self.dlg.exportRequested.connect(self._export_profile)
@@ -186,6 +192,11 @@ class TheRaiseOfSlopesPlugin:
         if not raster_layer or not p1 or not p2:
             self.dlg.setStatus("Parametri mancanti per il profilo.")
             return
+        
+        # Salva i dati del profilo per calcoli successivi
+        self.profile_p1 = p1
+        self.profile_p2 = p2
+        self.profile_raster_layer = raster_layer
             
         provider = raster_layer.dataProvider()
         extent_length = p1.distance(p2)
@@ -311,6 +322,82 @@ class TheRaiseOfSlopesPlugin:
         vb = v0 * (1 - dy) + v1 * dy
         return vb
 
+    def _sample_raster_at_x_coordinates(self, x_coords, raster_layer, default_value=0.0):
+        """Campiona un raster alle coordinate x lungo il profilo.
+        
+        Args:
+            x_coords: Array numpy di coordinate x lungo il profilo (distanze)
+            raster_layer: Layer raster QGIS da campionare
+            default_value: Valore di default se il campionamento fallisce
+            
+        Returns:
+            Array numpy con i valori campionati dal raster
+        """
+        if not self.profile_distances or not self.profile_elevations:
+            # Se non abbiamo un profilo, ritorna il valore di default
+            return np.full_like(x_coords, default_value, dtype=float)
+        
+        # Converti x_coords in array numpy se necessario
+        x_coords = np.atleast_1d(x_coords)
+        result = np.full_like(x_coords, default_value, dtype=float)
+        
+        # Ottieni provider e parametri del raster
+        provider = raster_layer.dataProvider()
+        band = 1
+        no_data = provider.sourceNoDataValue(band)
+        
+        # Gestione CRS
+        raster_crs = raster_layer.crs()
+        project_crs = QgsProject.instance().crs()
+        need_transform = project_crs.isValid() and raster_crs.isValid() and (project_crs != raster_crs)
+        transformer = None
+        if need_transform:
+            transformer = QgsCoordinateTransform(project_crs, raster_crs, QgsProject.instance())
+        
+        # I punti P1 e P2 del profilo
+        if not self._p1 or not self._p2:
+            return result
+        
+        p1 = self._p1
+        p2 = self._p2
+        extent_length = p1.distance(p2)
+        
+        if extent_length == 0:
+            return result
+        
+        # Per ogni coordinata x, calcola la posizione geografica e campiona
+        for i, x in enumerate(x_coords):
+            if x < 0 or x > extent_length:
+                # Fuori dal range del profilo
+                result[i] = default_value
+                continue
+            
+            # Parametro t lungo il segmento P1-P2
+            t = x / extent_length
+            
+            # Coordinate geografiche del punto
+            geo_x = p1.x() + (p2.x() - p1.x()) * t
+            geo_y = p1.y() + (p2.y() - p1.y()) * t
+            pt = QgsPointXY(geo_x, geo_y)
+            
+            # Trasformazione CRS se necessaria
+            if transformer is not None:
+                try:
+                    pt = transformer.transform(pt)
+                except Exception:
+                    result[i] = default_value
+                    continue
+            
+            # Campiona il raster
+            val = self._sample_with_bilinear(provider, pt, band, no_data, raster_layer)
+            
+            if val is not None:
+                result[i] = val
+            else:
+                result[i] = default_value
+        
+        return result
+
     def _analyze_grid_stability(self, params):
         """Esegue l'analisi di stabilità con griglia di cerchi usando Bishop."""
         if not self.profile_distances or not self.profile_elevations:
@@ -328,8 +415,13 @@ class TheRaiseOfSlopesPlugin:
             print("=" * 60)
             print("ANALISI DI STABILITÀ GRIGLIA - INIZIO")
             print("=" * 60)
-            print(f"Parametri terreno: γ={params['gamma']:.1f} kN/m³, c={params['cohesion']:.1f} kPa, φ={params['friction_angle']:.1f}°")
-            print(f"Aumento coesione con profondità: {params.get('cohesion_depth_rate', 0.0):.3f} kPa/m")
+            print(f"Parametri terreno strato 1: γ={params['gamma']:.1f} kN/m³, c={params['cohesion']:.1f} kPa, φ={params['friction_angle']:.1f}°, n={params['porosity']:.2f}")
+            
+            # Log stratigrafia
+            if params.get('enable_layer2', False):
+                print(f"Secondo strato attivo: γ₂={params['gamma_2']:.1f} kN/m³, c₂={params['cohesion_2']:.1f} kPa, φ₂={params['friction_angle_2']:.1f}°")
+            if params.get('enable_water', False):
+                print("Falda freatica attiva")
 
             # 1. Crea la funzione ground_surface
             ground_surface = self._create_ground_surface_function(
@@ -337,7 +429,25 @@ class TheRaiseOfSlopesPlugin:
                 self.profile_elevations
             )
             
-            # 2. Calcola il bounding box
+            # 2. Crea la funzione per l'interfaccia del secondo strato (se abilitato)
+            layer2_interface = None
+            if params.get('enable_layer2', False):
+                layer2_interface = self._create_layer2_interface_function(params, ground_surface)
+                print(f"Interfaccia secondo strato creata: modalità {params.get('layer2_definition_mode', 'unknown')}")
+                # Test dell'interfaccia su un punto campione
+                x_min_temp = self.profile_distances[0]
+                x_max_temp = self.profile_distances[-1]
+                test_x = (x_min_temp + x_max_temp) / 2
+                test_interface_y = layer2_interface(test_x)
+                test_ground_y = ground_surface(test_x)
+                print(f"  Test punto x={test_x:.1f}: terreno={test_ground_y:.1f}m, interfaccia={test_interface_y:.1f}m, spessore={test_ground_y-test_interface_y:.1f}m")
+            
+            # 3. Crea la funzione per la falda (se abilitata)
+            water_table = None
+            if params.get('enable_water', False):
+                water_table = self._create_water_table_function(params, ground_surface)
+            
+            # 4. Calcola il bounding box
             valid_elevations = [e for e in self.profile_elevations if e is not None]
             if not valid_elevations:
                 raise ValueError("Nessun dato valido nel profilo")
@@ -350,7 +460,7 @@ class TheRaiseOfSlopesPlugin:
             y_min_extended = y_min - (y_max - y_min) * params['depth_factor']
             bounding_box = np.array([[x_min, x_max], [y_min_extended, y_max * 1.1]])
             
-            # 3. Opzioni griglia (usando i parametri dall'interfaccia)
+            # 5. Opzioni griglia (usando i parametri dall'interfaccia)
             in_interval_min = params['in_interval_min'] * x_max
             in_interval_max = params['in_interval_max'] * x_max
             out_interval_min = params['out_interval_min'] * x_max
@@ -374,21 +484,9 @@ class TheRaiseOfSlopesPlugin:
             method_label, solver = self._get_solver(params.get('stability_method', 'Bishop'))
             print(f"Metodo di calcolo stabilità: {method_label}")
             
-            # Parametri del terreno
-            constant_dry_density = params['gamma']
-            soil_properties = SoilProperties(
-                cohesion=lambda x, y: params['cohesion'] + params.get('cohesion_depth_rate', 0.0) * (ground_surface(x) - y),
-                friction_angle=lambda x, y: params['friction_angle'] * np.ones_like(x + y),
-                dry_density=lambda x, y: constant_dry_density * np.ones_like(x + y),
-                porosity=lambda x, y: 0.0 * np.ones_like(x + y),
-                grain_density=lambda x, y: 0.0 * np.ones_like(x + y)
-            )
-            
-            # Stato del terreno
-            soil_state = SoilState(
-                saturation=lambda x, y: 1.0 * np.ones_like(x + y),
-                pore_pressure=lambda x, y: 0.0 * np.ones_like(x + y),
-                integrated_density=lambda x, y: constant_dry_density * (ground_surface(x) - y)
+            # Parametri del terreno e stato
+            soil_properties, soil_state = self._create_soil_properties_and_state(
+                params, ground_surface, layer2_interface, water_table
             )
             
             # Opzioni del metodo
@@ -504,15 +602,19 @@ class TheRaiseOfSlopesPlugin:
             # Prepara output
             eta_str = f"{eta_deg:.2f}°" if isinstance(eta_deg, (int, float)) else str(eta_deg)
             
+            # Info stratigrafia per output
+            strat_info = self._format_stratigraphy_info(params)
+            
             results_text = f"""ANALISI DI STABILITÀ - {method_label.upper()} (GRIGLIA)
 
 Parametri utilizzati:
 - Peso specifico (γ): {params['gamma']:.1f} kN/m³
 - Coesione (c): {params['cohesion']:.1f} kPa
-- Aumento coesione con profondità: {params.get('cohesion_depth_rate', 0.0):.3f} kPa/m
 - Angolo di attrito (φ): {params['friction_angle']:.1f}°
 - Numero conci: {params['num_slices']}
 - Tempo: {computation_time:.2f} s
+
+{strat_info}
 
 PARAMETRI GRIGLIA:
 - Punti ingresso: {params['num_in_pts']}
@@ -569,14 +671,37 @@ Superfici totali analizzate: {len(all_results)}
             print("=" * 60)
             print("ANALISI DI STABILITÀ SIMPLEX - INIZIO")
             print("=" * 60)
-            print(f"Parametri terreno: γ={params['gamma']:.1f} kN/m³, c={params['cohesion']:.1f} kPa, φ={params['friction_angle']:.1f}°")
-            print(f"Aumento coesione con profondità: {params.get('cohesion_depth_rate', 0.0):.3f} kPa/m")
+            print(f"Parametri terreno strato 1: γ={params['gamma']:.1f} kN/m³, c={params['cohesion']:.1f} kPa, φ={params['friction_angle']:.1f}°, n={params['porosity']:.2f}")
+            
+            # Log stratigrafia
+            if params.get('enable_layer2', False):
+                print(f"Secondo strato attivo: γ₂={params['gamma_2']:.1f} kN/m³, c₂={params['cohesion_2']:.1f} kPa, φ₂={params['friction_angle_2']:.1f}°")
+            if params.get('enable_water', False):
+                print("Falda freatica attiva")
 
             # 1. Crea la funzione ground_surface
             ground_surface = self._create_ground_surface_function(
                 self.profile_distances, 
                 self.profile_elevations
             )
+            
+            # 2. Crea la funzione per l'interfaccia del secondo strato (se abilitato)
+            layer2_interface = None
+            if params.get('enable_layer2', False):
+                layer2_interface = self._create_layer2_interface_function(params, ground_surface)
+                print(f"Interfaccia secondo strato creata: modalità {params.get('layer2_definition_mode', 'unknown')}")
+                # Test dell'interfaccia su un punto campione
+                x_min_temp = self.profile_distances[0]
+                x_max_temp = self.profile_distances[-1]
+                test_x = (x_min_temp + x_max_temp) / 2
+                test_interface_y = layer2_interface(test_x)
+                test_ground_y = ground_surface(test_x)
+                print(f"  Test punto x={test_x:.1f}: terreno={test_ground_y:.1f}m, interfaccia={test_interface_y:.1f}m, spessore={test_ground_y-test_interface_y:.1f}m")
+            
+            # 3. Crea la funzione per la falda (se abilitata)
+            water_table = None
+            if params.get('enable_water', False):
+                water_table = self._create_water_table_function(params, ground_surface)
             
             # 2. Calcola il bounding box
             valid_elevations = [e for e in self.profile_elevations if e is not None]
@@ -661,39 +786,9 @@ Superfici totali analizzate: {len(all_results)}
             method_label, solver = self._get_solver(params.get('stability_method', 'Bishop'))
             print(f"Metodo di calcolo stabilità: {method_label}")
             
-            # Parametri del terreno
-            constant_dry_density = params['gamma']
-            soil_properties = SoilProperties(
-                cohesion=lambda x, y: params['cohesion'] * np.ones_like(x + y),
-                friction_angle=lambda x, y: params['friction_angle'] * np.ones_like(x + y),
-                dry_density=lambda x, y: constant_dry_density * np.ones_like(x + y),
-                porosity=lambda x, y: 0.0 * np.ones_like(x + y),
-                grain_density=lambda x, y: 0.0 * np.ones_like(x + y)
-            )
-
-            # Stato del terreno
-            soil_state = SoilState(
-                saturation=lambda x, y: 1.0 * np.ones_like(x + y),
-                pore_pressure=lambda x, y: 0.0 * np.ones_like(x + y),
-                integrated_density=lambda x, y: constant_dry_density * (ground_surface(x) - y)
-            )
-            
-            soil_properties_2layer = SoilProperties(
-                cohesion=lambda x, y: params['cohesion'] * (y>ground_surface(x)- params['bedrock_depth']) +  
-                            params['cohesion_2'] * (y <= ground_surface(x) - params['bedrock_depth']),
-                friction_angle=lambda x, y: params['friction_angle']  * (y>ground_surface(x)- params['bedrock_depth']) +
-                                        params['friction_angle_2'] * (y <= ground_surface(x) - params['bedrock_depth']) ,
-                dry_density=lambda x, y: constant_dry_density * np.ones_like(x + y),
-                porosity=lambda x, y: 0.0 * np.ones_like(x + y),
-                grain_density=lambda x, y: 0.0 * np.ones_like(x + y)
-            )
-
-            # Stato del terreno
-            soil_state_2layer = SoilState(
-                saturation=lambda x, y: 1.0 * np.ones_like(x + y),
-                pore_pressure=lambda x, y: 0.0 * np.ones_like(x + y),
-                integrated_density=lambda x, y: constant_dry_density * np.minimum(ground_surface(x) - y, params["bedrock_depth"]) +
-                                                constant_dry_density_2 * np.maximum(ground_surface(x) - y - params["bedrock_depth"],0)
+            # Parametri del terreno e stato
+            soil_properties, soil_state = self._create_soil_properties_and_state(
+                params, ground_surface, layer2_interface, water_table
             )
             
             # Opzioni del metodo
@@ -812,15 +907,19 @@ Superfici totali analizzate: {len(all_results)}
             opt_message = str(results.message) if hasattr(results, 'message') and results.message is not None else 'N/A'
             opt_nit = str(results.nit) if hasattr(results, 'nit') else 'N/A'
             
+            # Info stratigrafia per output
+            strat_info = self._format_stratigraphy_info(params)
+            
             results_text = f"""ANALISI DI STABILITÀ - {method_label.upper()} (SIMPLEX)
 
 Parametri utilizzati:
 - Peso specifico (γ): {float(params['gamma']):.1f} kN/m³
 - Coesione (c): {float(params['cohesion']):.1f} kPa
-- Aumento coesione con profondità: {float(params.get('cohesion_depth_rate', 0.0)):.3f} kPa/m
 - Angolo di attrito (φ): {float(params['friction_angle']):.1f}°
 - Numero conci: {int(params['num_slices'])}
 - Tempo: {float(computation_time):.2f} s
+
+{strat_info}
 
 BOUNDS SIMPLEX (valori assoluti):
 - x_in: [{float(x_in_min):.1f}, {float(x_in_max):.1f}] m
@@ -884,6 +983,380 @@ Ottimizzazione:
             return interpolator(x)
         
         return ground_surface
+    
+    def _create_layer2_interface_function(self, params, ground_surface):
+        """Crea una funzione per l'interfaccia del secondo strato."""
+        mode = params.get('layer2_definition_mode', 0)
+        
+        if mode == 0:  # Profondità costante dal piano campagna
+            depth = params.get('layer2_const_depth', 5.0)
+            return lambda x: ground_surface(x) - depth
+        
+        elif mode == 1:  # Da raster
+            raster_layer = params.get('layer2_raster_layer')
+            if raster_layer:
+                # Crea funzione che campiona il raster (profondità) e sottrae dalla superficie
+                def layer2_from_raster(x):
+                    depths = self._sample_raster_at_x_coordinates(x, raster_layer, default_value=5.0)
+                    return ground_surface(x) - depths
+                return layer2_from_raster
+            else:
+                # Fallback
+                depth = params.get('layer2_const_depth', 5.0)
+                return lambda x: ground_surface(x) - depth
+        
+        elif mode == 2:  # Quota assoluta
+            elevation = params.get('layer2_elevation', 0.0)
+            return lambda x: np.full_like(x, elevation, dtype=float)
+        
+        # Fallback
+        depth = params.get('layer2_const_depth', 5.0)
+        return lambda x: ground_surface(x) - depth
+    
+    def _create_water_table_function(self, params, ground_surface):
+        """Crea una funzione per la falda freatica."""
+        mode = params.get('water_definition_mode', 0)
+        
+        if mode == 0:  # Profondità costante dal piano campagna
+            depth = params.get('water_const_depth', 2.0)
+            return lambda x: ground_surface(x) - depth
+        
+        elif mode == 1:  # Da raster
+            raster_layer = params.get('water_raster_layer')
+            if raster_layer:
+                # Crea funzione che campiona il raster (profondità) e sottrae dalla superficie
+                def water_from_raster(x):
+                    depths = self._sample_raster_at_x_coordinates(x, raster_layer, default_value=2.0)
+                    return ground_surface(x) - depths
+                return water_from_raster
+            else:
+                # Fallback
+                depth = params.get('water_const_depth', 2.0)
+                return lambda x: ground_surface(x) - depth
+        
+        elif mode == 2:  # Quota assoluta
+            elevation = params.get('water_elevation', 0.0)
+            return lambda x: np.full_like(x, elevation, dtype=float)
+        
+        # Fallback
+        depth = params.get('water_const_depth', 2.0)
+        return lambda x: ground_surface(x) - depth
+    
+    def compute_layer2_profile_for_display(self, params):
+        """Calcola i valori dell'interfaccia del secondo strato lungo il profilo per la visualizzazione.
+        
+        Returns:
+            Lista di quote (float) o None se non può essere calcolato
+        """
+        if not self.profile_distances or not self.profile_elevations:
+            return None
+        
+        try:
+            # Crea la funzione ground_surface
+            ground_surface = self._create_ground_surface_function(
+                self.profile_distances, 
+                self.profile_elevations
+            )
+            
+            mode = params.get('layer2_definition_mode', 0)
+            
+            if mode == 0:  # Profondità costante
+                depth = params.get('layer2_const_depth', 5.0)
+                return [ground_surface(x) - depth for x in self.profile_distances]
+            
+            elif mode == 1:  # Da raster
+                raster_layer = params.get('layer2_raster_layer')
+                if not raster_layer or not self.profile_p1 or not self.profile_p2:
+                    return None
+                
+                # Campiona il raster lungo il profilo
+                depths = []
+                provider = raster_layer.dataProvider()
+                band = 1
+                no_data = provider.sourceNoDataValue(band)
+                extent_length = self.profile_p1.distance(self.profile_p2)
+                
+                raster_crs = raster_layer.crs()
+                project_crs = QgsProject.instance().crs()
+                need_transform = project_crs.isValid() and raster_crs.isValid() and (project_crs != raster_crs)
+                transformer = None
+                if need_transform:
+                    transformer = QgsCoordinateTransform(project_crs, raster_crs, QgsProject.instance())
+                
+                for d in self.profile_distances:
+                    t = d / extent_length if extent_length > 0 else 0
+                    x = self.profile_p1.x() + (self.profile_p2.x() - self.profile_p1.x()) * t
+                    y = self.profile_p1.y() + (self.profile_p2.y() - self.profile_p1.y()) * t
+                    pt = QgsPointXY(x, y)
+                    
+                    if transformer is not None:
+                        try:
+                            pt = transformer.transform(pt)
+                        except Exception:
+                            depths.append(5.0)  # Default
+                            continue
+                    
+                    val = self._sample_with_bilinear(provider, pt, band, no_data, raster_layer)
+                    depths.append(val if val is not None else 5.0)
+                
+                # Calcola le quote dell'interfaccia
+                return [ground_surface(x) - depth for x, depth in zip(self.profile_distances, depths)]
+            
+            elif mode == 2:  # Quota assoluta
+                elevation = params.get('layer2_elevation', 0.0)
+                return [elevation] * len(self.profile_distances)
+            
+        except Exception as e:
+            print(f"Errore calcolo profilo layer2 per visualizzazione: {e}")
+            return None
+    
+    def compute_water_profile_for_display(self, params):
+        """Calcola i valori della falda lungo il profilo per la visualizzazione.
+        
+        Returns:
+            Lista di quote (float) o None se non può essere calcolato
+        """
+        if not self.profile_distances or not self.profile_elevations:
+            return None
+        
+        try:
+            # Crea la funzione ground_surface
+            ground_surface = self._create_ground_surface_function(
+                self.profile_distances, 
+                self.profile_elevations
+            )
+            
+            mode = params.get('water_definition_mode', 0)
+            
+            if mode == 0:  # Profondità costante
+                depth = params.get('water_const_depth', 2.0)
+                return [ground_surface(x) - depth for x in self.profile_distances]
+            
+            elif mode == 1:  # Da raster
+                raster_layer = params.get('water_raster_layer')
+                if not raster_layer or not self.profile_p1 or not self.profile_p2:
+                    return None
+                
+                # Campiona il raster lungo il profilo
+                depths = []
+                provider = raster_layer.dataProvider()
+                band = 1
+                no_data = provider.sourceNoDataValue(band)
+                extent_length = self.profile_p1.distance(self.profile_p2)
+                
+                raster_crs = raster_layer.crs()
+                project_crs = QgsProject.instance().crs()
+                need_transform = project_crs.isValid() and raster_crs.isValid() and (project_crs != raster_crs)
+                transformer = None
+                if need_transform:
+                    transformer = QgsCoordinateTransform(project_crs, raster_crs, QgsProject.instance())
+                
+                for d in self.profile_distances:
+                    t = d / extent_length if extent_length > 0 else 0
+                    x = self.profile_p1.x() + (self.profile_p2.x() - self.profile_p1.x()) * t
+                    y = self.profile_p1.y() + (self.profile_p2.y() - self.profile_p1.y()) * t
+                    pt = QgsPointXY(x, y)
+                    
+                    if transformer is not None:
+                        try:
+                            pt = transformer.transform(pt)
+                        except Exception:
+                            depths.append(2.0)  # Default
+                            continue
+                    
+                    val = self._sample_with_bilinear(provider, pt, band, no_data, raster_layer)
+                    depths.append(val if val is not None else 2.0)
+                
+                # Calcola le quote della falda
+                return [ground_surface(x) - depth for x, depth in zip(self.profile_distances, depths)]
+            
+            elif mode == 2:  # Quota assoluta
+                elevation = params.get('water_elevation', 0.0)
+                return [elevation] * len(self.profile_distances)
+            
+        except Exception as e:
+            print(f"Errore calcolo profilo falda per visualizzazione: {e}")
+            return None
+    
+    def _create_soil_properties_and_state(self, params, ground_surface, layer2_interface=None, water_table=None):
+        """Crea SoilProperties e SoilState in base ai parametri."""
+        constant_dry_density = params['gamma']
+        
+        if params.get('enable_layer2', False) and layer2_interface is not None:
+            # Due strati
+            constant_dry_density_2 = params.get('gamma_2', 22.0)
+            
+            # Funzioni che restituiscono parametri diversi sopra/sotto l'interfaccia
+            def cohesion_2layer(x, y):
+                interface_y = layer2_interface(x)
+                c1 = params['cohesion']
+                c2 = params.get('cohesion_2', 50.0)
+                return np.where(y > interface_y, c1, c2)
+            
+            def friction_angle_2layer(x, y):
+                interface_y = layer2_interface(x)
+                phi1 = params['friction_angle']
+                phi2 = params.get('friction_angle_2', 30.0)
+                return np.where(y > interface_y, phi1, phi2)
+            
+            def porosity_2layer(x, y):
+                interface_y = layer2_interface(x)
+                n1 = params['porosity']
+                n2 = params.get('porosity_2', 0.25)
+                return np.where(y > interface_y, n1, n2)
+            
+            def dry_density_2layer(x, y):
+                interface_y = layer2_interface(x)
+                gamma1 = params['gamma']
+                gamma2 = params.get('gamma_2', 22.0)
+                return np.where(y > interface_y, gamma1, gamma2)
+            
+            soil_properties = SoilProperties(
+                cohesion=cohesion_2layer,
+                friction_angle=friction_angle_2layer,
+                dry_density=dry_density_2layer,
+                porosity=porosity_2layer,
+                grain_density=lambda x, y: 0.0 * np.ones_like(x + y)
+            )
+            
+            # Stato del terreno con eventuale falda
+            if params.get('enable_water', False) and water_table is not None:
+                def saturation_with_water(x, y):
+                    water_y = water_table(x)
+                    return np.where(y <= water_y, 1.0, 0.0)
+                
+                def pore_pressure_with_water(x, y):
+                    water_y = water_table(x)
+                    gamma_w = 9.81  # kN/m³
+                    return np.where(y <= water_y, gamma_w * (water_y - y), 0.0)
+                
+                def dry_density_with_water_2layer(x, y):
+                    interface_y = layer2_interface(x)
+                    water_y = water_table(x)
+                    saturation = np.where(y <= water_y, 1.0, 0.0)
+                    gamma1_sat = params['gamma'] + params['porosity'] * saturation * 9.81
+                    gamma2_sat = params.get('gamma_2', 22.0) + params.get('porosity_2', 0.25) * saturation * 9.81
+                    return np.where(y > interface_y, gamma1_sat, gamma2_sat)
+                
+                def integrated_density_2layer_water(x, y):
+                    # Normalize inputs to numpy arrays for vectorized ops
+                    x_arr = np.asarray(x)
+                    y_arr = np.asarray(y)
+                    interface_y = np.asarray(layer2_interface(x_arr))
+                    ground_y = np.asarray(ground_surface(x_arr))
+
+                    # Calcola spessore strato 1 e 2 (element-wise)
+                    depth_total = ground_y - y_arr
+                    depth_layer1 = np.maximum(0.0, ground_y - np.maximum(y_arr, interface_y))
+                    depth_layer2 = np.maximum(0.0, np.minimum(ground_y, interface_y) - y_arr)
+                    
+                    # Compute effective gamma for each layer element-wise
+                    gamma1_eff = dry_density_with_water_2layer(x_arr, ground_y - depth_layer1/2)
+                    gamma1_eff = np.where(depth_layer1 > 0.0, gamma1_eff, 0.0)
+
+                    gamma2_eff = dry_density_with_water_2layer(x_arr, interface_y - depth_layer2/2)
+                    gamma2_eff = np.where(depth_layer2 > 0.0, gamma2_eff, 0.0)
+                    
+                    result = gamma1_eff * depth_layer1 + gamma2_eff * depth_layer2
+                    # Return a scalar if inputs were scalars, otherwise return array
+                    if np.ndim(result) == 0:
+                        return float(result)
+                    return result
+                
+                soil_state = SoilState(
+                    saturation=saturation_with_water,
+                    pore_pressure=pore_pressure_with_water,
+                    integrated_density=integrated_density_2layer_water
+                )
+            else:
+                # Senza falda
+                def integrated_density_2layer(x, y):
+                    interface_y = layer2_interface(x)
+                    ground_y = ground_surface(x)
+                    
+                    # Calcola spessore strato 1 e 2
+                    depth_total = ground_y - y
+                    depth_layer1 = np.maximum(0, ground_y - np.maximum(y, interface_y))
+                    depth_layer2 = np.maximum(0, np.minimum(ground_y, interface_y) - y)
+                    
+                    return params['gamma'] * depth_layer1 + params.get('gamma_2', 22.0) * depth_layer2
+                
+                soil_state = SoilState(
+                    saturation=lambda x, y: 0.0 * np.ones_like(x + y),
+                    pore_pressure=lambda x, y: 0.0 * np.ones_like(x + y),
+                    integrated_density=integrated_density_2layer
+                )
+        else:
+            # Singolo strato
+            soil_properties = SoilProperties(
+                cohesion=lambda x, y: params['cohesion'],
+                friction_angle=lambda x, y: params['friction_angle'] * np.ones_like(x + y),
+                dry_density=lambda x, y: params['gamma'] * np.ones_like(x + y),
+                porosity=lambda x, y: params['porosity'] * np.ones_like(x + y),
+                grain_density=lambda x, y: 0.0 * np.ones_like(x + y)
+            )
+            
+            # Stato del terreno con eventuale falda
+            if params.get('enable_water', False) and water_table is not None:
+                def saturation_with_water(x, y):
+                    water_y = water_table(x)
+                    return np.where(y <= water_y, 1.0, 0.0)
+                
+                def pore_pressure_with_water(x, y):
+                    water_y = water_table(x)
+                    gamma_w = 9.81  # kN/m³
+                    return np.where(y <= water_y, gamma_w * (water_y - y), 0.0)
+                
+                def dry_density_with_water(x, y):
+                    water_y = water_table(x)
+                    saturation = np.where(y <= water_y, 1.0, 0.0)
+                    return params['gamma'] + params['porosity'] * saturation * 9.81
+                
+                soil_state = SoilState(
+                    saturation=saturation_with_water,
+                    pore_pressure=pore_pressure_with_water,
+                    integrated_density=lambda x, y: dry_density_with_water(x, y) * (ground_surface(x) - y)
+                )
+            else:
+                # Senza falda
+                soil_state = SoilState(
+                    saturation=lambda x, y: 0.0 * np.ones_like(x + y),
+                    pore_pressure=lambda x, y: 0.0 * np.ones_like(x + y),
+                    integrated_density=lambda x, y: params['gamma'] * (ground_surface(x) - y)
+                )
+        
+        return soil_properties, soil_state
+    
+    def _format_stratigraphy_info(self, params):
+        """Formatta le informazioni di stratigrafia per l'output."""
+        info = []
+        
+        if params.get('enable_layer2', False):
+            info.append("STRATIGRAFIA:")
+            info.append(f"- Secondo strato attivo")
+            mode = params.get('layer2_definition_mode', 0)
+            if mode == 0:
+                info.append(f"  Profondità: {params.get('layer2_const_depth', 5.0):.2f} m dal piano campagna")
+            elif mode == 1:
+                info.append(f"  Profondità da raster")
+            elif mode == 2:
+                info.append(f"  Quota assoluta: {params.get('layer2_elevation', 0.0):.2f} m")
+            info.append(f"  Parametri strato 2: γ₂={params.get('gamma_2', 22.0):.1f} kN/m³, c₂={params.get('cohesion_2', 50.0):.1f} kPa, φ₂={params.get('friction_angle_2', 30.0):.1f}°, n₂={params.get('porosity_2', 0.25):.2f}")
+        
+        if params.get('enable_water', False):
+            if not info:
+                info.append("")
+            info.append("FALDA FREATICA:")
+            info.append(f"- Falda attiva")
+            mode = params.get('water_definition_mode', 0)
+            if mode == 0:
+                info.append(f"  Profondità: {params.get('water_const_depth', 2.0):.2f} m dal piano campagna")
+            elif mode == 1:
+                info.append(f"  Profondità da raster")
+            elif mode == 2:
+                info.append(f"  Quota assoluta: {params.get('water_elevation', 0.0):.2f} m")
+        
+        return '\n'.join(info) if info else ""
 
     def _update_profile_with_all_surfaces(self):
         """Aggiorna il grafico del profilo con tutte le superfici critiche calcolate."""

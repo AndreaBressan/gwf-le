@@ -69,9 +69,9 @@ def gle (geometry, soil_properties, soil_state, options, f, name="GLE with given
     (x_nodes,y_nodes,t_nodes,l_nodes,
      cos,sin,
      tan_phi,
-     u,w,c,
+     u,w,c,depth,
      quad_weights)=T
-     
+
     res_bishop= bishop_with_tuple(T,I)
     FoS_Bishop=res_bishop.factor_of_safety
 
@@ -92,11 +92,19 @@ def gle (geometry, soil_properties, soil_state, options, f, name="GLE with given
         s = c + ( p - u ) * tan_phi
         nonlocal S
         S=s*quad_weights
-        P=p*quad_weights
+        P=np.maximum(p*quad_weights,0)                           # force normal to the slice always compressive
+        dE = P*sin - S*cos/x[0]                                  # increment in the normal force at the side of the slices
+        E  = np.maximum(np.cumsum(dE), 1.e-6)                    # normal force at the side of each slice, oriented as x_nodes, always compressive
+        c_vert = c/l_nodes*depth                                 # cohesion along the height of the slice
+        X  = np.minimum(Q*E , c_vert + E*tan_phi)                # shear force at the side of each slice, limited by the strength of the material
+        Q_check = X/E
 
         rot_FoS   = (np.sum(S)/Osum - x[0])
-        trasl_FoS = (np.sum(S * cos)/np.sum(P * sin) - x[0]) 
-        return [rot_FoS,trasl_FoS]
+        trasl_FoS = (np.sum(S * cos)/np.sum(P * sin) - x[0])
+        if np.any(Q>Q_check):
+            return [np.inf, np.inf]
+        else:
+            return [rot_FoS,trasl_FoS]
 
 
     Lambda=0.3
