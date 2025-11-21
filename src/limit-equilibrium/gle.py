@@ -106,7 +106,25 @@ def gle (geometry, soil_properties, soil_state, options, f, name="GLE with given
         else:
             return [rot_FoS,trasl_FoS]
 
-
+    """
+    Leonardo: 21/11/2025
+    Lambda (x[1]) non può essere negativo, con Simone abbiamo visto che
+    M&P non funziona se Lambda<0.
+    Abbiamo provato:
+        - inserire dei bounds in roots (cambiando funzione)
+        - mettere un if nella F_GLE per escludere valori negativi
+    entrambe le strategie non hanno funzionato.    
+    
+    il problema si corregge aumentando il numero delle strisce,
+    perchè evidentemente l'equilibrio locale delle strisce è troppo sbilanciato
+    se la discretizzazione (numero delle striscie) è "troppo" grossolana
+    variabili: (de, E, X, Q)
+    
+    forse si potrebbe inserire un warning del tipo:
+        se Lambda<0:
+            'invalid solution, increase the number of slices'
+            
+    """
     Lambda=0.3
     root=optimize.root(
             fun=F_GLE, x0=[FoS_Bishop, Lambda],
