@@ -15,8 +15,7 @@ from bishop import bishop_with_tuple
 
 
 def morgerstern_price(geometry, soil_properties, soil_state, options):
-    L=np.abs(geometry.landslide_interval[0]-geometry.landslide_interval[1])
-    return gle(geometry, soil_properties, soil_state, options, lambda x : np.sin(np.pi*x/L ), "Morgestern-Price")
+    return gle(geometry, soil_properties, soil_state, options, lambda x : np.sin(np.pi*x ), "Morgestern-Price")
 
 
 def spencer(geometry, soil_properties, soil_state, options):
@@ -75,7 +74,8 @@ def gle (geometry, soil_properties, soil_state, options, f, name="GLE with given
     res_bishop= bishop_with_tuple(T,I)
     FoS_Bishop=res_bishop.factor_of_safety
 
-    f_x=f(x_nodes)
+    L=geometry.landslide_interval[0]-geometry.landslide_interval[1]
+    f_x=f((geometry.landslide_interval[0]-x_nodes)/L)
     p=w*cos
     S=(c + ( p - u ) * tan_phi)*quad_weights
     O=w*sin*quad_weights
