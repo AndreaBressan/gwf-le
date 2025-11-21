@@ -95,6 +95,22 @@ def gle (geometry, soil_properties, soil_state, options, f, name="GLE with given
         P=np.maximum(p*quad_weights,0)                           # force normal to the slice always compressive
         dE = P*sin - S*cos/x[0]                                  # increment in the normal force at the side of the slices
         E  = np.maximum(np.cumsum(dE), 1.e-6)                    # normal force at the side of each slice, oriented as x_nodes, always compressive
+        """
+        Leonardo: 21/11/2025
+        BUG to FIX
+        c_vert è la risultante della coesione lungo il lato verticale della striscia
+        serve per calcolare la massima resistenza a taglio lungo questa superficie: c_vert + E*tan_phi
+        
+        se il mezzo è multi strato, ovvero se c e phi cambiano con la profondità allora l'espressione:
+            c_vert + E*tan_phi
+        deve essere modificata perchè ne c_vert ne phi sono necessariamente i valori alla base della striscia
+        se la striscia attraversa 2 o più strati di terreno, non è banale capire sia il valore corretto da assegnare
+        a c_vert e phi per questo calcolo
+        
+        in via conservativa propongo
+        di considerare i valori minimi di c_vert e phi lungo l'allineamento verticale
+        
+        """
         c_vert = c/l_nodes*depth                                 # cohesion along the height of the slice
         X  = np.minimum(Q*E , c_vert + E*tan_phi)                # shear force at the side of each slice, limited by the strength of the material
         Q_check = X/E
@@ -123,7 +139,8 @@ def gle (geometry, soil_properties, soil_state, options, f, name="GLE with given
     forse si potrebbe inserire un warning del tipo:
         se Lambda<0:
             'invalid solution, increase the number of slices'
-            
+        
+        che ne pensi Andrea? ti vengono in mente soluzioni migliori?
     """
     Lambda=0.3
     root=optimize.root(
