@@ -80,14 +80,16 @@ def bishop_with_tuple(T,I):
         # pendio salga o scenda da sx a dx
         m_alpha = cos * (1+1/old_fos * tan_phi * t_nodes*sign) 
         m_alpha = np.maximum(m_alpha,0.2)
+<<<<<<< Updated upstream
         p=1/m_alpha*(w-1/old_fos*sin*(c-u*tan_phi)*sign)
         nonlocal R
+=======
+        nonlocal R, p
+        p=1/m_alpha*(w-1/old_fos*sin*(c-u*tan_phi))
+>>>>>>> Stashed changes
         R=(c+(p-u)*tan_phi)*quad_weights
         increment = old_fos - np.sum(R,0)/Osum
         return increment
-
-    # scipy.optimize.newton uses the secant method if not provided with the 
-    # derivative of the cost function. This is what happens here
 
     options=I[-1]
     geometry=I[0]
@@ -101,6 +103,8 @@ def bishop_with_tuple(T,I):
         factor_of_safety = Fellenius_result
     else:
         factor_of_safety = Bishop_result
+     
+    # m_alpha = cos * (1+1/factor_of_safety * tan_phi * t_nodes)
         
     return bc.Result(
         method="Bishop",
@@ -108,8 +112,11 @@ def bishop_with_tuple(T,I):
         Lambda = 0.0,
         nodes=np.vstack((x_nodes,y_nodes)),
         depths=geometry.ground_surface(x_nodes)-y_nodes,
-        weight_forces=w*quad_weights,
+        weight_forces=w*sin*quad_weights,
         resisting_forces=R,
+        resisting_cohesive=c*quad_weights,
+        resisting_frictional=(p-u)*tan_phi*quad_weights,
+        # resisting_frictional2=w*tan_phi/m_alpha, # equivalent way of expressing the frictional contribution
         inter_slice_forces=np.zeros((2,len(x_nodes))),
         inputs=I
         )

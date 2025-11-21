@@ -5,6 +5,7 @@ sys.path.append("../limit-equilibrium")
 from base_classes import SoilProperties,SoilState,UniformQuadrature,Options,np,plt
 from bishop import bishop
 from gridOfCircles import GridOptions, gridComputation,computeEtaMinForSurface
+from gridSimplexComputation import simplexComputation
 from circularSlipSurface import circularSlipSurface
 import scipy.optimize as optimize
 import time
@@ -56,57 +57,44 @@ def func(v):
 
 
 time_start=time.perf_counter()
-func.calls=0
 
 
-result=[]    
 zero=[]
 calls=[]
-start_geo=[]
 end_geo=[]
 for j in range(len(beta)):
     slope_base = slope_height / np.tan(np.radians(beta[j]))
     dist_max = max(slope_base,slope_height)
+    slope_length = slope_height / np.sin(np.radians(beta[j]))
 
     ground_surface=(lambda x : 0*(x<=0) 
                     + x*np.tan(np.radians(beta[j])) *(0<x)*(x<=slope_base) 
                     + slope_height*(x>slope_base))
-    bounding_box=np.array([[-3*dist_max,3*dist_max],[-1.5*slope_height,1.5*slope_height]])
+    bounding_box=np.array([[-10*slope_length,10*slope_length],[-1.5*slope_height,1.5*slope_height]])
     gOptions=GridOptions(
-        in_interval=[1.*slope_base,5*dist_max],
-        out_interval=[-5*dist_max,1/4*slope_base*0],
+        in_pts=[1.*slope_base,1*slope_length+slope_base, 2*slope_length+slope_base, 5*slope_length+slope_base],
+        out_pts=[-1*slope_length,-1/2*slope_length ,-1/4*slope_length, 0., 1/8*slope_base, 1/4*slope_base],
         min_eta_inc=np.radians(5),
-        num_in_pts=15,
-        num_out_pts=15)
+        num_in_pts=None,
+        num_out_pts=None)
     
     # anche i bounds
-    bounds = ((1*slope_base,10*dist_max) ,
-              (-10*dist_max,1/16*slope_base*0.) , 
+    # bounds = ((1*slope_base,10*dist_max) ,
+    #           (-10*dist_max,1/16*slope_base*0.) , 
+    #           (0., 90))
+    bounds = ((1*slope_base,slope_base+3*slope_length) ,
+              (-3*slope_length,1/16*slope_base*0.) , 
               (0., 90))
     
-    [l_result,time_duration]=gridComputation(bishop, ground_surface,bounding_box,soil_properties,soil_state,gOptions,mOptions)
-    result.append(l_result[0])
-    start_geo=result[j].inputs[0]
-    trial=[start_geo.landslide_interval[1],start_geo.landslide_interval[0],np.degrees(start_geo.eta)]
-    zero.append( optimize.minimize(func, trial , 
-                          method='Nelder-Mead',
-                          bounds = bounds,
-                          options = {
-                            'disp'      : False,
-                            'xatol'     : 1e-3,
-                            'fatol'     : 1e-4,
-                            'maxiter'   : 100,
-                            'return_all': True
-                            }
-                          )
-    )
-    calls.append(func.calls)
-    func.calls=0
+    [l_zero , l_calls ] = simplexComputation(bishop, ground_surface, bounding_box, soil_properties, soil_state, gOptions,mOptions, bounds) 
+    zero.append(l_zero)
+    calls.append(l_calls)
     end_geo.append(circularSlipSurface.fromInOutAndEta(ground_surface,bounding_box,zero[j].x[0],zero[j].x[1],np.radians(zero[j].x[2])))
-    print(f'beta={beta[j]:.2f} : after-optimization-FOS={zero[j].fun:.3f}, starting-FOS={result[j].factor_of_safety:.3f}, using {calls[j]:d} evaluations')
+    
+    print(f'beta={beta[j]:.2f} : after-optimization-FOS={zero[j].fun:.3f}, using {calls[j]:d} evaluations')
     plt.figure()
     end_geo[j].plot(300,x_cm=10)
-    start_geo.plotSlipSurface(200, 'blue')
+    # start_geo.plotSlipSurface(200, 'blue')
     end_geo[j].plotSlipSurface(200, 'red')
 
     
