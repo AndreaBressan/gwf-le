@@ -135,6 +135,8 @@ def gle (geometry, soil_properties, soil_state, options, f, name="GLE with given
         depths=geometry.ground_surface(x_nodes)-y_nodes,
         weight_forces=w*quad_weights,
         resisting_forces=S,
+        resisting_cohesive=c*quad_weights,
+        resisting_frictional=(p-u)*tan_phi*quad_weights,
         inter_slice_forces=np.zeros((2,len(x_nodes))),
         inputs=(geometry, soil_properties, soil_state, options)
         )

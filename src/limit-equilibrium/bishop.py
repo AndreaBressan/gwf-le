@@ -80,13 +80,8 @@ def bishop_with_tuple(T,I):
         # pendio salga o scenda da sx a dx
         m_alpha = cos * (1+1/old_fos * tan_phi * t_nodes*sign) 
         m_alpha = np.maximum(m_alpha,0.2)
-<<<<<<< Updated upstream
-        p=1/m_alpha*(w-1/old_fos*sin*(c-u*tan_phi)*sign)
-        nonlocal R
-=======
         nonlocal R, p
-        p=1/m_alpha*(w-1/old_fos*sin*(c-u*tan_phi))
->>>>>>> Stashed changes
+        p=1/m_alpha*(w-1/old_fos*sin*(c-u*tan_phi)*sign)
         R=(c+(p-u)*tan_phi)*quad_weights
         increment = old_fos - np.sum(R,0)/Osum
         return increment
