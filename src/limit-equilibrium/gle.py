@@ -15,8 +15,7 @@ from bishop import bishop_with_tuple
 
 
 def morgerstern_price(geometry, soil_properties, soil_state, options):
-    L=np.abs(geometry.landslide_interval[0]-geometry.landslide_interval[1])
-    return gle(geometry, soil_properties, soil_state, options, lambda x : np.sin(np.pi*x/L ), "Morgestern-Price")
+    return gle(geometry, soil_properties, soil_state, options, lambda x : np.sin(np.pi*x ), "Morgestern-Price")
 
 
 def spencer(geometry, soil_properties, soil_state, options):
@@ -75,7 +74,8 @@ def gle (geometry, soil_properties, soil_state, options, f, name="GLE with given
     res_bishop= bishop_with_tuple(T,I)
     FoS_Bishop=res_bishop.factor_of_safety
 
-    f_x=f(x_nodes)
+    L=geometry.landslide_interval[0]-geometry.landslide_interval[1]
+    f_x=f((geometry.landslide_interval[0]-x_nodes)/L)
     p=w*cos
     S=(c + ( p - u ) * tan_phi)*quad_weights
     O=w*sin*quad_weights
@@ -95,6 +95,22 @@ def gle (geometry, soil_properties, soil_state, options, f, name="GLE with given
         P=np.maximum(p*quad_weights,0)                           # force normal to the slice always compressive
         dE = P*sin - S*cos/x[0]                                  # increment in the normal force at the side of the slices
         E  = np.maximum(np.cumsum(dE), 1.e-6)                    # normal force at the side of each slice, oriented as x_nodes, always compressive
+        """
+        Leonardo: 21/11/2025
+        BUG to FIX
+        c_vert è la risultante della coesione lungo il lato verticale della striscia
+        serve per calcolare la massima resistenza a taglio lungo questa superficie: c_vert + E*tan_phi
+        
+        se il mezzo è multi strato, ovvero se c e phi cambiano con la profondità allora l'espressione:
+            c_vert + E*tan_phi
+        deve essere modificata perchè ne c_vert ne phi sono necessariamente i valori alla base della striscia
+        se la striscia attraversa 2 o più strati di terreno, non è banale capire sia il valore corretto da assegnare
+        a c_vert e phi per questo calcolo
+        
+        in via conservativa propongo
+        di considerare i valori minimi di c_vert e phi lungo l'allineamento verticale
+        
+        """
         c_vert = c/l_nodes*depth                                 # cohesion along the height of the slice
         X  = np.minimum(Q*E , c_vert + E*tan_phi)                # shear force at the side of each slice, limited by the strength of the material
         Q_check = X/E
@@ -105,7 +121,6 @@ def gle (geometry, soil_properties, soil_state, options, f, name="GLE with given
             return [np.inf, np.inf]
         else:
             return [rot_FoS,trasl_FoS]
-
 
     Lambda=0.3
     root=optimize.root(
@@ -120,6 +135,8 @@ def gle (geometry, soil_properties, soil_state, options, f, name="GLE with given
         depths=geometry.ground_surface(x_nodes)-y_nodes,
         weight_forces=w*quad_weights,
         resisting_forces=S,
+        resisting_cohesive=c*quad_weights,
+        resisting_frictional=(p-u)*tan_phi*quad_weights,
         inter_slice_forces=np.zeros((2,len(x_nodes))),
         inputs=(geometry, soil_properties, soil_state, options)
         )

@@ -111,7 +111,7 @@ class Options:
         self.quadrature=quadrature
 
 class Result:
-    def __init__(self, method, factor_of_safety,Lambda,nodes, depths, weight_forces, resisting_forces, inter_slice_forces,inputs):
+    def __init__(self, method, factor_of_safety,Lambda,nodes, depths, weight_forces, resisting_forces, resisting_cohesive, resisting_frictional, inter_slice_forces,inputs):
         self.method=method
         self.factor_of_safety=factor_of_safety
         self.Lambda=Lambda       
@@ -119,5 +119,7 @@ class Result:
         self.depths=depths
         self.weight_forces=weight_forces
         self.resisting_forces=resisting_forces
+        self.resisting_cohesive=resisting_cohesive
+        self.resisting_frictional=resisting_frictional
         self.inter_slice_forces=inter_slice_forces
         self.inputs=inputs
