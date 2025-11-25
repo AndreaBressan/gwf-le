@@ -10,7 +10,7 @@
             "request": "launch",
             "program": "${file}",
             "env": {
-                "PYTHONPATH": "${workspaceFolder}/src${pathSeparator}:${workspaceFolder}/src/limit-equilibrium${pathSeparator}${env:PYTHONPATH}"
+                "PYTHONPATH": "${workspaceFolder}/src${pathSeparator}:${workspaceFolder}/src/LEM${pathSeparator}${env:PYTHONPATH}"
             }
         }
     ]

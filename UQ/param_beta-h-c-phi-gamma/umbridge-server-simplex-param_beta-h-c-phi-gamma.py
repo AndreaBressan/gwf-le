@@ -2,7 +2,7 @@ import umbridge
 import sys
 import numpy as np
 import time
-sys.path.append("../../src/limit-equilibrium")
+sys.path.append("../../src/LEM")
 from base_classes import SoilProperties,SoilState,UniformQuadrature,Options,np,plt
 from circularSlipSurface import circularSlipSurface
 from bishop import bishop

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Moduli del framework Limit Equilibrium integrati nel plugin QGIS.
-Questi file sono copie dei moduli in src/limit-equilibrium/
+Questi file sono copie dei moduli in src/LEM/
 """
 
 from .base_classes import (

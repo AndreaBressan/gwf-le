@@ -1,6 +1,6 @@
 import numpy as np
 import sys
-sys.path.append("../limit-equilibrium")
+sys.path.append("../LEM")
 from base_classes import SoilProperties,SoilState,UniformQuadrature,Options,np,plt
 from bishop import bishop
 from gridOfCircles import GridOptions, gridComputation
