@@ -1,8 +1,8 @@
 import numpy as np
 import time
 import sys
-sys.path.append("../LEM")
-sys.path.append("../searchCriticalF")
+sys.path.append("../src/LEM")
+sys.path.append("../src/searchCriticalF")
 from base_classes import SoilProperties,SoilState,UniformQuadrature,Options,np,plt
 from circularSlipSurface import circularSlipSurface
 from gridOfCircles import GridOptions, gridComputation,computeEtaMinForSurface

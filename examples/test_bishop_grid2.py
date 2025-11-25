@@ -1,7 +1,7 @@
 import numpy as np
 import sys
-sys.path.append("../LEM")
-sys.path.append("../searchCriticalF")
+sys.path.append("../src/LEM")
+sys.path.append("../src/searchCriticalF")
 from base_classes import SoilProperties,SoilState,UniformQuadrature,Options,np,plt
 from bishop import bishop
 from gridOfCircles import GridOptions, gridComputation
