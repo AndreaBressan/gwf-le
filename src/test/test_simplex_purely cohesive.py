@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import sys
 sys.path.append("../LEM")
+sys.path.append("../searchCriticalF")
 from base_classes import SoilProperties,SoilState,UniformQuadrature,Options,np,plt
 from bishop import bishop
 from gridOfCircles import GridOptions, gridComputation,computeEtaMinForSurface

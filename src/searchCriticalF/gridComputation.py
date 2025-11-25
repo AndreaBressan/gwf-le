@@ -1,6 +1,6 @@
 import time
 from gridOfCircles import gridOfCircles
-from base_classes import UniformQuadrature,Options,np
+from ..LEM.base_classes import UniformQuadrature,Options,np
 
 
 class GridOptions:

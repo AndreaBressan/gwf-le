@@ -1,5 +1,5 @@
-import base_classes
 import numpy as np
+import base_classes
 
 class circularSlipSurface(base_classes.Geometry):
     def __init__(self, ground_surface, bounding_box, center,  radius, dist, out_pt, in_pt, middle, eta, alpha):
