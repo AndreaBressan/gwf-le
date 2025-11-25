@@ -10,6 +10,45 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.optimize as optimize
 
+"""
+INPUTS
+metodo
+    iterazioni massime
+    tolleranza
+    output opzionali
+sulle verticali:
+    coesione minima
+    angolo di attrito minimo
+sulla base:
+    coesione 
+    angolo di attrito
+    peso sulla base
+    pressione acqua alla base
+------------------------------
+    resistenza alla base   = s (angolo di attrito, coesione, peso e pressione acqua alla base )
+    forza agente alla base = p (geometria, peso e pressione dell'acqua alla base)
+
+    
+OUTPUTS
+    metodo
+        nome
+        parametri metodo specifici
+    geometria
+    fof
+    lambda
+    output opzionali
+        centri basi conci (x,y)
+        profondità centri conci
+        forza resistente coesiva
+        forza resistente attritiva
+        forza resistente totale 
+        forza agente 
+        pressione acqua
+        azioni interstriscia normale
+        azioni interstriscia tangenziale
+"""
+
+
 class Geometry:
     """ Geometry describes terrain and a landslide by using the following data
         - ground_surface, a map x to y
