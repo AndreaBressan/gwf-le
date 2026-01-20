@@ -31,6 +31,8 @@ class searchDomain:
     @abstractmethod
     def makeGeometry(self, param:np.ndarray) -> Geometry:
         pass
+    def paramIsValid(self, param:np.ndarray)-> bool:
+        return np.all(param>=self.getParametersBound[:,0]) and np.all(paramv=self.getParametersBound[:,1])
 
 class lemMethod:
     def __init__(self,
@@ -55,8 +57,38 @@ def find_critical  (domain : searchDomain, method : lemMethod, geometries: List[
     return result[:num_geometries], perf_counter()-time_start
 
 
-def simplex     (domain : searchDomain, method : lemMethod, initialGeometries: List[Geometry], num_geometries: int=1):
+def simplex     (domain : searchDomain, method : lemMethod, initialGeometries: List[Geometry], num_geometries: int=1,
+                 options={
+                            'disp'      : False,
+                            'xatol'     : 1e-3,
+                            'fatol'     : 1e-4,
+                            'maxiter'   : 100,
+                            'return_all': True
+                            }):
+    time_start = perf_counter()
+    from scipy import optimize
+    def func(v):
+        func.calls+=1
+        if not domain.paramIsValid(v):
+            return np.nan
+        else:
+            geometry=domain.makeGeometry(v)
+            return method.func(geometry,method.soil,method.options).factor_of_safety
+    func.calls=0
     
+    optimized_params=[optimize.minimize(func, domain.getParameters(geo), 
+                          method='Nelder-Mead',
+                          bounds = searchDomain.getParametersBound,
+                          options = options
+                          ) for geo in initialGeometries]
+    optimized_params.sort(key=lambda z: z.fun)
+    result=[ (domain.makeGeometry(v.x),method.func(domain.makeGeometry(v.x),method.soil,method.options)) for v in optimized_params[:num_geometries] ]    
+    return result, perf_counter()-time_start, func.calls
 
-def grid_simplex(domain : searchDomain, method : lemMethod, initialGeometries: List[Geometry], num_geometries: int=1):
-    
+def grid_simplex(domain : searchDomain, method : lemMethod, initialGeometries: List[Geometry], num_geometries: int=1,
+                 options = { 'num_grid_output': 1 }):
+    grid_result,t1=find_critical(domain,method,initialGeometries,options['num_grid_output'])
+    simplex_start_geo=[g[0] for g in grid_result]
+    optimized,  t2,calls=simplex(domain,method,simplex_start_geo,num_geometries)
+    return optimized,t1+t2,calls
+
