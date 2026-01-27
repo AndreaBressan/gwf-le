@@ -98,7 +98,8 @@ def gle( geometry : Geometry, soil :Soil, options : lemOptions, lambdaFunc, name
     FoS_Bishop=start.factor_of_safety
 
     # TODO fix orientation of the slope!!
-
+    # TODO lateral cohesion and forces
+    
     L=geometry.landslide_interval[0]-geometry.landslide_interval[1]
     f_x=f((geometry.landslide_interval[0]-x_nodes)/L)
     p=w*cos
