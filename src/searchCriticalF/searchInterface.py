@@ -9,10 +9,14 @@ Input and output structures for searching of the critical slip surface
 from typing import List,Dict
 from abc import abstractmethod
 from time import perf_counter
+import sys
+from pathlib import Path
 import numpy as np
 
+# Add project root to path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from LEM.lemInterface import Geometry, lemOptions, lemResult, Soil
+from src.LEM.lemInterface import Geometry, lemOptions, lemResult, Soil
 
 class searchDomain:
     def __init__(self,

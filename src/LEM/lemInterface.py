@@ -9,32 +9,11 @@ Input and output structures for limit equilibrium methods
 
 import numpy as np
 
-class SliceSubdivision:
-    def __init__(self,
-                 endpoints,
-                 points_per_slice=1
-                ):
-        self.endpoints=endpoints
-        self.points_per_slice=points_per_slice
-        lengths=endpoints[1:]-endpoints[0:-1]
-        centers=(endpoints[1:]+endpoints[0:-1])/2
-        if points_per_slice==1:
-            self.nodes=centers
-            self.weights=lengths
-        elif points_per_slice==2:
-            gauss_position=np.array([-.5,.5])/np.sqrt(3.0)
-            gauss_weight=np.array([.5,.5])
-            self.nodes=(centers[:, None]+gauss_position*lengths[:, None]).ravel()
-            self.weights=(lengths[:, None] * gauss_weight).ravel()
-        else:
-            raise ValueError("Integration order can be only one of 1,2")
 
-
-
-def default_subdivision(interval,slice_num=50):
-    return SliceSubdivision(
-        np.linspace(interval[0],interval[1],slice_num+1),
-        0)
+def uniform_subdivision(interval,slice_num=50):
+    endpoints=np.linspace(interval[0],interval[1],slice_num+1)
+    centers=(endpoints[1:]+endpoints[0:-1])/2
+    return endpoints,centers
 
 # idea optional_outputs could be a list of names
 # methods only fill requested data in a dictionary
@@ -45,13 +24,22 @@ class lemOptions:
     def __init__(self,
         max_iteration=100,
         tolerance=1e-4,
-        optional_outputs=False,
-        subdivision_method=default_subdivision
-        ):
+        optional_outputs=None,
+        subdivision_method=lambda interval: uniform_subdivision(interval,50)
+    ):
         self.max_iteration=max_iteration
         self.tolerance=tolerance
-        self.optional_outputs=optional_outputs
+        self.optional_outputs=optional_outputs if optional_outputs is not None else []
         self.subdivision_method=subdivision_method
+    
+    def copy(self):
+        """Create a copy of this lemOptions object"""
+        return lemOptions(
+            max_iteration=self.max_iteration,
+            tolerance=self.tolerance,
+            optional_outputs=self.optional_outputs,
+            subdivision_method=self.subdivision_method
+        )
 
 class Geometry:
     """ Geometry describes terrain and a landslide by using the following data

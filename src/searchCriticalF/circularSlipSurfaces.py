@@ -9,10 +9,15 @@ Input and output structures for searching of the critical slip surface
 from typing import List,Dict,Tuple,Callable
 from abc import abstractmethod
 from time import perf_counter
+import sys
+from pathlib import Path
 import numpy as np
 
-from searchCriticalF.searchInterface import searchDomain
-from LEM.lemInterface import Geometry
+# Add project root to path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
+from src.searchCriticalF.searchInterface import searchDomain
+from src.LEM.lemInterface import Geometry
 
 class circularArc (Geometry):
     def __init__(self,

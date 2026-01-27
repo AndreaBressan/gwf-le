@@ -7,12 +7,21 @@ Created on 2026-01-20
 general limit equilibrium methods
 """
 import numpy as np
-import lemInterface
+from types import SimpleNamespace
+import sys
+from pathlib import Path
+
+# Add project root to path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
+from src.LEM.lemInterface import *
+
+
+#TODO check the correctness of formulas: quad_weights has become l_nodes, but I suspect that it should have been 1
 
 def slices_bottom_data(geometry : Geometry, soil :Soil, options: lemOptions) -> dict:
-    quad=options.subdivision_method(geometry.landslide_interval)
     #"geometric properties"
-    x_nodes=quad.nodes
+    x_ends,x_nodes=options.subdivision_method(geometry.landslide_interval)
     y_nodes=geometry.slip_surface(x_nodes)
     t_nodes=geometry.slip_tangent(x_nodes)
     l_nodes=np.sqrt(1+t_nodes**2)
@@ -28,12 +37,14 @@ def slices_bottom_data(geometry : Geometry, soil :Soil, options: lemOptions) -> 
 
 
 def fellenius (geometry : Geometry, soil :Soil, options : lemOptions) -> lemResult:
-    slice_data=slices_bottom_data(geometry,soil, options)   
-    locals().update(slice_data)
+    required=["y_nodes", "l_nodes", "cos", "sin", "tan_phi", "c", "u", "w"]
+    slice_data=slices_bottom_data(geometry,soil, options)
+    y_nodes, l_nodes, cos, sin, tan_phi, c, u, w = (
+        slice_data.get(k) for k in required)
     p=w*cos 
     sign=np.sign(y_nodes[-1]-y_nodes[1])
-    R=(c+(p-u)*tan_phi)*quad_weights
-    O=sign*w*sin*quad_weights
+    R=(c+(p-u)*tan_phi)*l_nodes
+    O=sign*w*sin*l_nodes
     Osum=np.sum(O,0)
     slice_data.update({"p":p , "R":R, "O": O})
     return lemResult(
@@ -44,21 +55,28 @@ def fellenius (geometry : Geometry, soil :Soil, options : lemOptions) -> lemResu
         )
 
 def bishop    (geometry : Geometry, soil :Soil, options : lemOptions) -> lemResult:
-    required=["y_nodes","t_nodes","cos","sin","tan_phi","c","u","w","O"]
+    required=["y_nodes","t_nodes","cos","sin","tan_phi","c","u","w","O","l_nodes"]
     sub_options=options.copy()
-    sub_options.optional_output.join(required )
+    sub_options.optional_outputs=list(set(sub_options.optional_outputs + required))
     start=fellenius(geometry,soil, sub_options)
     slice_data=start.optional_outputs
-    locals().update(dict((k,start[k]) for k in required if k in start))
+    # Unpack required variables from optional_outputs dictionary
+    y_nodes, t_nodes, cos, sin, tan_phi, c, u, w, O, l_nodes = (
+        slice_data.get(k) for k in required)
     sign=np.sign(y_nodes[-1]-y_nodes[1])
-    Osum=np.sum(O)    
+    Osum=np.sum(O)
+    
+    # Initialize variables for nonlocal use in F function
+    R = np.zeros_like(w)
+    p = np.zeros_like(w)
+    m_alpha = np.zeros_like(cos)
 
     def F(old_fos):
         nonlocal R, p, m_alpha
         m_alpha = cos * (1+1/old_fos * tan_phi * t_nodes*sign) 
         m_alpha = np.maximum(m_alpha,0.2)
         p=1/m_alpha*(w-1/old_fos*sin*(c-u*tan_phi)*sign)
-        R=(c+(p-u)*tan_phi)*quad_weights
+        R=(c+(p-u)*tan_phi)*l_nodes
         increment = old_fos - np.sum(R,0)/Osum
         return increment
 
@@ -72,9 +90,9 @@ def bishop    (geometry : Geometry, soil :Soil, options : lemOptions) -> lemResu
     slice_data.update({"p":p , "R":R, "O": O , "m_alpha": m_alpha})
     return lemResult(
         method_name="Bishop",
-        factor_of_safety=np.max(Bishop_result, start.factor_of_safety),
+        factor_of_safety=np.maximum(Bishop_result, start.factor_of_safety),
         Lambda= 0.0,
-        optional_outputs=dict((k,[k]) for k in options.optional_outputs if k in slice_data)
+        optional_outputs=dict((k,slice_data[k]) for k in options.optional_outputs if k in slice_data)
         )
 
 
@@ -84,31 +102,43 @@ def morgerstern_price(geometry : Geometry, soil :Soil, options : lemOptions) -> 
 
 
 def spencer(geometry : Geometry, soil :Soil, options : lemOptions) -> lemResult:
-    return gle(geometry, soil, options, lambda x : 1, "Spencer")
+    return gle(geometry, soil, options, lambda x : 1.0, "Spencer")
 
 
 def gle( geometry : Geometry, soil :Soil, options : lemOptions, lambdaFunc, name="GLE with given f") -> lemResult:
-    required=["y_nodes","t_nodes","cos","sin","tan_phi","c","u","w","O"]
+    required=["x_ends","x_nodes","t_nodes","cos","sin","tan_phi","c","u","w","O","l_nodes"]
     sub_options=options.copy()
-    sub_options.optional_output.join(required )
+    sub_options.optional_outputs=list(set(sub_options.optional_outputs + required))
     start=bishop(geometry,soil, sub_options)
     slice_data=start.optional_outputs
-    locals().update(dict((k,start[k]) for k in required if k in start))
+
+    x_ends, x_nodes, t_nodes, cos, sin, tan_phi, c, u, w, O, l_nodes = (
+        slice_data.get(k) for k in required)
     
     FoS_Bishop=start.factor_of_safety
-
-    # TODO fix orientation of the slope!!
-    # TODO lateral cohesion and forces
     
     L=geometry.landslide_interval[0]-geometry.landslide_interval[1]
-    f_x=f((geometry.landslide_interval[0]-x_nodes)/L)
+    f_x=lambdaFunc((geometry.landslide_interval[0]-x_nodes)/L)
     p=w*cos
-    S=(c + ( p - u ) * tan_phi)*quad_weights
-    O=w*sin*quad_weights
+    S=(c + ( p - u ) * tan_phi)*l_nodes
+    O=w*sin*l_nodes
     Osum=np.sum(O,0)
     
+    x_ends=x_ends[1:]
+    y_ends=geometry.slip_surface(x_ends)
+    s_ends=geometry.ground_surface(x_ends)
+    c_vert = soil.vertical_cohesion(x_ends,y_ends)*(s_ends-y_ends)
+    tan_phi_vert = soil.vertical_cohesion(x_ends,y_ends)
+
+    # Initialize variables for nonlocal use in F function
+    R = np.zeros_like(w)
+    m_alpha = np.zeros_like(cos)
+    Q = np.zeros_like(w)
+    E = np.zeros_like(w)
+    X = np.zeros_like(w)
+
     def F(x):
-        nonlocal R, p, m_alpha, Q, S, E
+        nonlocal R, p, m_alpha, Q, S, E, X
 
         m_alpha = cos * (1+ tan_phi * t_nodes / x[0])
         m_alpha = np.maximum(m_alpha,0.2)
@@ -118,12 +148,12 @@ def gle( geometry : Geometry, soil :Soil, options : lemOptions, lambdaFunc, name
         den = (m_alpha + m_alpha_star* Q)
         p =( w - ( sin - cos*Q ) * ( c - u*tan_phi ) / x[0] ) / den
         s = c + ( p - u ) * tan_phi
-        S=s*quad_weights
-        P=np.maximum(p*quad_weights,0)                           # force normal to the slice always compressive
+        S=s*l_nodes
+        P=np.maximum(p*l_nodes,0)                           # force normal to the slice always compressive
+        
         dE = P*sin - S*cos/x[0]                                  # increment in the normal force at the side of the slices
         E  = np.maximum(np.cumsum(dE), 1.e-6)
-        c_vert = c/l_nodes*depth                                 # cohesion along the height of the slice
-        X  = np.minimum(Q*E , c_vert + E*tan_phi)                # shear force at the side of each slice, limited by the strength of the material
+        X  = np.minimum(Q*E , c_vert + E*tan_phi_vert)           # shear force at the side of each slice, limited by the strength of the material
         Q_check = X/E
 
         rot_FoS   = (np.sum(S)/Osum - x[0])
@@ -140,25 +170,10 @@ def gle( geometry : Geometry, soil :Soil, options : lemOptions, lambdaFunc, name
             fun=F, x0=[FoS_Bishop, Lambda],
             tol=options.tolerance
             )
-    slice_data.update({"p":p , "R":R, "O": O , "m_alpha": m_alpha, "S":S})
+    slice_data.update({"p":p , "R":R, "O": O , "m_alpha": m_alpha, "S":S, "E":E, "X":X})
     return lemResult(
-        method=name,
+        method_name=name,
         factor_of_safety = root.x[0],
         Lambda = root.x[1],
-        optional_outputs=dict((k,[k]) for k in options.optional_outputs if k in slice_data)
+        optional_outputs=dict((k,slice_data[k]) for k in options.optional_outputs if k in slice_data)
     )
-
-# TODO check names of the following and if they are needed
-#bc.Result(
-#        method=name,
-#        factor_of_safety = root.x[0],
-#        Lambda = root.x[1],
-#        nodes=np.vstack((x_nodes,y_nodes)),
-#        depths=geometry.ground_surface(x_nodes)-y_nodes,
-#        weight_forces=w*quad_weights,
-#        resisting_forces=S,
-#        resisting_cohesive=c*quad_weights,
-#        resisting_frictional=(p-u)*tan_phi*quad_weights,
-#        inter_slice_forces=np.zeros((2,len(x_nodes))),
-#        inputs=(geometry, soil_properties, soil_state, options)
-#        )

@@ -7,9 +7,15 @@ Created on 2025-12-16
 Input and output structures for limit equilibrium methods
 """
 
+import sys
+from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
-from lemInterface import Geometry
+
+# Add project root to path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
+from src.LEM.lemInterface import Geometry
 
 class GeometryPlot(Geometry):
     def __init__(self,geometry,bounding_box):
