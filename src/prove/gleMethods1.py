@@ -31,5 +31,5 @@ results=[fellenius(geometry,soil,options),
     morgerstern_price(geometry,soil,options)]
 
 for (name,out) in zip(methods,results):
-    print(name, out.factor_of_safety)
+    print(name, f'{out.factor_of_safety:.3f} with Lambda {out.Lambda:.3f}')
 

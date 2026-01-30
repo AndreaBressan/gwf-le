@@ -18,13 +18,14 @@ from src.LEM.lemInterface import *
 
 
 #TODO check the correctness of formulas: quad_weights has become l_nodes, but I suspect that it should have been 1
-
+# Leo: I think you are right. now it works fine.
+# Leo: where you see 1, before it was l_nodes
 def slices_bottom_data(geometry : Geometry, soil :Soil, options: lemOptions) -> dict:
     #"geometric properties"
     x_ends,x_nodes=options.subdivision_method(geometry.landslide_interval)
     y_nodes=geometry.slip_surface(x_nodes)
     t_nodes=geometry.slip_tangent(x_nodes)
-    l_nodes=np.sqrt(1+t_nodes**2)
+    l_nodes=np.sqrt(1+t_nodes**2) # se non ricordo male, dovrebbe essere la lunghezza della stricia ma non mi torna. come mai?
     cos=1/l_nodes
     sin=np.sqrt(1-cos**2)*np.sign(t_nodes)
     depth = geometry.ground_surface(x_nodes)-y_nodes
@@ -35,7 +36,6 @@ def slices_bottom_data(geometry : Geometry, soil :Soil, options: lemOptions) -> 
     w=soil.column_weight(x_nodes,y_nodes)
     return locals()
 
-
 def fellenius (geometry : Geometry, soil :Soil, options : lemOptions) -> lemResult:
     required=["y_nodes", "l_nodes", "cos", "sin", "tan_phi", "c", "u", "w"]
     slice_data=slices_bottom_data(geometry,soil, options)
@@ -43,8 +43,8 @@ def fellenius (geometry : Geometry, soil :Soil, options : lemOptions) -> lemResu
         slice_data.get(k) for k in required)
     p=w*cos 
     sign=np.sign(y_nodes[-1]-y_nodes[1])
-    R=(c+(p-u)*tan_phi)*l_nodes
-    O=sign*w*sin*l_nodes
+    R=(c+(p-u)*tan_phi)*1
+    O=sign*w*sin*1
     Osum=np.sum(O,0)
     slice_data.update({"p":p , "R":R, "O": O})
     return lemResult(
@@ -76,7 +76,7 @@ def bishop    (geometry : Geometry, soil :Soil, options : lemOptions) -> lemResu
         m_alpha = cos * (1+1/old_fos * tan_phi * t_nodes*sign) 
         m_alpha = np.maximum(m_alpha,0.2)
         p=1/m_alpha*(w-1/old_fos*sin*(c-u*tan_phi)*sign)
-        R=(c+(p-u)*tan_phi)*l_nodes
+        R=(c+(p-u)*tan_phi)*1
         increment = old_fos - np.sum(R,0)/Osum
         return increment
 
@@ -120,8 +120,8 @@ def gle( geometry : Geometry, soil :Soil, options : lemOptions, lambdaFunc, name
     L=geometry.landslide_interval[0]-geometry.landslide_interval[1]
     f_x=lambdaFunc((geometry.landslide_interval[0]-x_nodes)/L)
     p=w*cos
-    S=(c + ( p - u ) * tan_phi)*l_nodes
-    O=w*sin*l_nodes
+    S=(c + ( p - u ) * tan_phi)*1
+    O=w*sin*1
     Osum=np.sum(O,0)
     
     x_ends=x_ends[1:]
@@ -148,8 +148,8 @@ def gle( geometry : Geometry, soil :Soil, options : lemOptions, lambdaFunc, name
         den = (m_alpha + m_alpha_star* Q)
         p =( w - ( sin - cos*Q ) * ( c - u*tan_phi ) / x[0] ) / den
         s = c + ( p - u ) * tan_phi
-        S=s*l_nodes
-        P=np.maximum(p*l_nodes,0)                           # force normal to the slice always compressive
+        S=s*1
+        P=np.maximum(p*1,0)                           # force normal to the slice always compressive
         
         dE = P*sin - S*cos/x[0]                                  # increment in the normal force at the side of the slices
         E  = np.maximum(np.cumsum(dE), 1.e-6)
