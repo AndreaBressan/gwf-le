@@ -24,12 +24,19 @@ soil=Soil(cohesion=lambda x,y: 5.0*np.ones_like(x+y),
           column_weight=lambda x,y: 18.0*(ground_surface(x)-y))
 
 
-methods=["fellenius","bishop","spencer","morgerstern_price"]
-results=[fellenius(geometry,soil,options),
-    bishop(geometry,soil,options),
-    spencer(geometry,soil,options),
-    morgerstern_price(geometry,soil,options)]
+from time import perf_counter as time
 
-for (name,out) in zip(methods,results):
-    print(name, f'{out.factor_of_safety:.3f} with Lambda {out.Lambda:.3f}')
+methods={
+    "fellenius":        fellenius,
+    "bishop":           bishop,
+    "spencer":          spencer,
+    "morgerstern_price":morgerstern_price}
 
+# There is a strange effect for which the time of bishop method is exaggerated, probably python interpreter stuff
+results=dict()
+t2=time()
+for name in methods:
+    t1 = time()
+    results[name]=methods[name](geometry,soil,options)
+    print(f'{name:20} {results[name].factor_of_safety:.3f} with Lambda{f'{results[name].Lambda:>.3f}':>6}, in {time()-t1:.3f} seconds')
+print(f'total time {time()-t2:.3f}')
