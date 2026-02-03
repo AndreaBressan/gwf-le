@@ -106,13 +106,13 @@ def spencer(geometry : Geometry, soil :Soil, options : lemOptions) -> lemResult:
 
 
 def gle( geometry : Geometry, soil :Soil, options : lemOptions, lambdaFunc, name="GLE with given f") -> lemResult:
-    required=["x_ends","x_nodes","t_nodes","cos","sin","tan_phi","c","u","w","O","l_nodes"]
+    required=["x_ends","x_nodes","t_nodes","cos","sin","tan_phi","c","u","w"]
     sub_options=options.copy()
     sub_options.optional_outputs=list(set(sub_options.optional_outputs + required))
     start=bishop(geometry,soil, sub_options)
     slice_data=start.optional_outputs
 
-    x_ends, x_nodes, t_nodes, cos, sin, tan_phi, c, u, w, O, l_nodes = (
+    x_ends, x_nodes, t_nodes, cos, sin, tan_phi, c, u, w = (
         slice_data.get(k) for k in required)
     
     FoS_Bishop=start.factor_of_safety
@@ -128,7 +128,7 @@ def gle( geometry : Geometry, soil :Soil, options : lemOptions, lambdaFunc, name
     y_ends=geometry.slip_surface(x_ends)
     s_ends=geometry.ground_surface(x_ends)
     c_vert = soil.vertical_cohesion(x_ends,y_ends)*(s_ends-y_ends)
-    tan_phi_vert = soil.vertical_cohesion(x_ends,y_ends)
+    tan_phi_vert = soil.vertical_friction_angle(x_ends,y_ends)
 
     # Initialize variables for nonlocal use in F function
     R = np.zeros_like(w)

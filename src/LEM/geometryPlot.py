@@ -28,8 +28,6 @@ class GeometryPlot(Geometry):
         self.bounding_box=bounding_box.copy()
 
     def plot(self,num_points,dpc=100,x_cm=np.nan,y_cm=np.nan):
-        ocra=(205/255,133/255,63/255)
-        ocra2=(205/511,133/511,63/511)
         if np.isnan(x_cm):
             if np.isnan(y_cm):
                 x_cm=10
@@ -40,18 +38,22 @@ class GeometryPlot(Geometry):
             if np.isnan(y_cm):
                 y_cm=x_cm/np.sqrt(2)
 
+        self.plotTerrain(num_points)
+        self.plotSlipSurface(num_points)
+        plt.ylim((self.bounding_box[1,0],self.bounding_box[1,1]))
+        plt.xlim((self.bounding_box[0,0],self.bounding_box[0,1]))
+        plt.title('Geometry plot')
+        return plt.gcf()
+
+    def plotTerrain(self,num_points):
+        ocra=(205/255,133/255,63/255)
+        ocra2=(205/511,133/511,63/511)
         xs=self.getGroundPlotPoints(num_points)
         gs=self.ground_surface(xs)
         bt=self.bounding_box[1,0]*np.ones_like(gs)
 
         plt.fill_between(xs, gs, bt, interpolate=True, color=ocra)
         plt.plot(xs, gs, lw=1,color=ocra2)
-        plt.ylim((self.bounding_box[1,0],self.bounding_box[1,1]))
-        plt.xlim((self.bounding_box[0,0],self.bounding_box[0,1]))
-        self.plotSlipSurface(num_points)
-
-        plt.title('Geometry plot')
-        return plt.gcf()
 
     def plotSlipSurface(self,num_points,color=(1,0,0)):
         xl=self.getLandslidePlotPoints(num_points)

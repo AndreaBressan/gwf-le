@@ -183,11 +183,13 @@ class circularSlipSearchDomain (searchDomain):
     def __init__(self,
                  ground_surface : Callable,
                  in_range  : tuple[float,float],
-                 out_range : tuple[float,float]
+                 out_range : tuple[float,float],
+                 eta_min_shift : float = np.radians(1)
     ):
         self.ground_surface = ground_surface 
         self.in_range  = in_range  
         self.out_range = out_range
+        self.eta_min_shift = eta_min_shift
     def getParametersBound(self) -> np.ndarray:
         return np.array([self.in_range, self.out_range])
     
@@ -198,29 +200,27 @@ class circularSlipSearchDomain (searchDomain):
             return np.array([geometry.in_pt[0],geometry.out_pt[0],geometry.eta])
         
     def sample_grid(self, options : Dict) -> List[Geometry]:
-        has_interval = "in_interval" in options and "num_in_points" in options
-        has_points   = "in_pts" in options
+        has_interval = "num_in_points" in options
+        has_points   = "in_points" in options
         if not (has_interval or has_points):
             raise Exception("Not enough info for in points: provide interval and num or a list")
         elif has_interval and has_points:
-            raise Exception("in_pts are specified both by a list and other data,use only one")
+            raise Exception("in_points are specified both by a list and other data,use only one")
         if has_points:
-            in_pts=options["in_points"]
+            in_points=options["in_points"]
         else:
-            interval=options["in_interval"]
-            in_pts=np.linspace(interval[0],interval[1],options["num_in_pts"])
+            in_points=np.linspace(self.in_range[0],self.in_range[1],options["num_in_points"])
 
-        has_interval = "out_interval" in options and "num_out_points" in options
-        has_points   = "out_pts" in options
+        has_interval = "num_out_points" in options
+        has_points   = "out_points" in options
         if not (has_interval or has_points):
             raise Exception("Not enough info for out points: provide interval and num or a list")
         elif has_interval and has_points:
-            raise Exception("out_pts are specified both by a list and other data,use only one")
+            raise Exception("out_points are specified both by a list and other data,use only one")
         if has_points:
-            out_pts=options["out_points"]
+            out_points=options["out_points"]
         else:
-            interval=options["out_interval"]
-            out_pts=np.linspace(interval[0],interval[1],options["num_out_pts"])
+            out_points=np.linspace(self.out_range[0],self.out_range[1],options["num_out_points"])
         
         if  "min_eta_inc" in options:
             min_eta_inc=options["min_eta_inc"]
@@ -228,10 +228,10 @@ class circularSlipSearchDomain (searchDomain):
             min_eta_inc=np.radians(5)
 
         geometries=[]
-        params=np.array(3)
-        for i in in_pts:
-            for o in out_pts:
-                eta_min=self.computeEtaMinForSurface(i,o)
+        params=np.zeros(3)
+        for i in in_points:
+            for o in out_points:
+                eta_min=self.computeEtaMinForSurface(i,o)+self.eta_min_shift
                 eta_max=np.pi/2
                 num_eta=np.floor((eta_max-eta_min)/min_eta_inc)
                 eta=np.linspace(eta_min,eta_max,int(num_eta))
@@ -265,3 +265,11 @@ class circularSlipSearchDomain (searchDomain):
                 eta_min=eta_mid
             eta_mid=(eta_max+eta_min)/2
         return eta_mid
+    
+    def paramIsValid(self, param:np.ndarray)-> bool:
+        if not param[0]>=self.in_range[0] and param[0]<=self.in_range[1] :
+            return False
+        if not param[1]>=self.out_range[0] and param[1]<=self.out_range[1]:
+            return False        
+        eta_min=self.computeEtaMinForSurface(param[0],param[1])
+        return param[2]>eta_min+self.eta_min_shift and param[2]<=np.pi/2
