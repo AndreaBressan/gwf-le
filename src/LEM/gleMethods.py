@@ -43,8 +43,8 @@ def fellenius (geometry : Geometry, soil :Soil, options : lemOptions) -> lemResu
         slice_data.get(k) for k in required)
     p=w*cos 
     sign=np.sign(y_nodes[-1]-y_nodes[1])
-    R=(c+(p-u)*tan_phi)*1
-    O=sign*w*sin*1
+    R=(c+(p-u)*tan_phi)
+    O=sign*w*sin
     Osum=np.sum(O,0)
     slice_data.update({"p":p , "R":R, "O": O})
     return lemResult(
@@ -76,7 +76,7 @@ def bishop    (geometry : Geometry, soil :Soil, options : lemOptions) -> lemResu
         m_alpha = cos * (1+1/old_fos * tan_phi * t_nodes*sign) 
         m_alpha = np.maximum(m_alpha,0.2)
         p=1/m_alpha*(w-1/old_fos*sin*(c-u*tan_phi)*sign)
-        R=(c+(p-u)*tan_phi)*1
+        R=(c+(p-u)*tan_phi)
         increment = old_fos - np.sum(R,0)/Osum
         return increment
 
@@ -120,8 +120,8 @@ def gle( geometry : Geometry, soil :Soil, options : lemOptions, lambdaFunc, name
     L=geometry.landslide_interval[0]-geometry.landslide_interval[1]
     f_x=lambdaFunc((geometry.landslide_interval[0]-x_nodes)/L)
     p=w*cos
-    S=(c + ( p - u ) * tan_phi)*1
-    O=w*sin*1
+    S=(c + ( p - u ) * tan_phi)
+    O=w*sin
     Osum=np.sum(O,0)
     
     x_ends=x_ends[1:]
@@ -148,8 +148,8 @@ def gle( geometry : Geometry, soil :Soil, options : lemOptions, lambdaFunc, name
         den = (m_alpha + m_alpha_star* Q)
         p =( w - ( sin - cos*Q ) * ( c - u*tan_phi ) / x[0] ) / den
         s = c + ( p - u ) * tan_phi
-        S=s*1
-        P=np.maximum(p*1,0)                           # force normal to the slice always compressive
+        S=s
+        P=np.maximum(p,0)                           # force normal to the slice always compressive
         
         dE = P*sin - S*cos/x[0]                                  # increment in the normal force at the side of the slices
         E  = np.maximum(np.cumsum(dE), 1.e-6)
