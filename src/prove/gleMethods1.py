@@ -15,12 +15,20 @@ ground_surface=lambda x : 0.0*(x<=0.0)+ x*(0.0<x)*(x<=3.0) + 3.0*(x>3.0)
 geometry=circularArc.fromInOutAndEta(ground_surface, 4.0, 0.0, np.radians(70))
 
 soil=Soil(cohesion=lambda x,y: 5.0*np.ones_like(x+y),
-          vertical_cohesion=lambda x,y: 5.0*np.ones_like(x+y),
+          vertical_cohesion=lambda x,y,y_top: 5.0*np.ones_like(x+y)[:,np.newaxis],
           friction_angle=lambda x,y: 30.0*np.ones_like(x+y),
-          vertical_friction_angle=lambda x,y: 5.0*np.ones_like(x+y),
+          vertical_friction_angle=lambda x,y,y_top: 30.0*np.ones_like(x+y)[:,np.newaxis],
           pore_pressure=lambda x,y: 0.0*np.ones_like(x+y),
           saturation=lambda x,y: 0.0*np.ones_like(x+y),
           column_weight=lambda x,y: 18.0*(ground_surface(x)-y))
+
+soil=Soil.soilWithVerticalSampling(cohesion=lambda x,y: 5.0*np.ones_like(x+y),
+          friction_angle=lambda x,y: 30.0*np.ones_like(x+y),
+          pore_pressure=lambda x,y: 0.0*np.ones_like(x+y),
+          saturation=lambda x,y: 0.0*np.ones_like(x+y),
+          column_weight=lambda x,y: 18.0*(ground_surface(x)-y),
+          num_vertical_sample=1
+    )
 
 
 from time import perf_counter as time

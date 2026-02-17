@@ -69,7 +69,36 @@ class Soil:
         self.pore_pressure=pore_pressure
         self.saturation=saturation
         self.column_weight=column_weight
-        
+    
+    @staticmethod
+    def sample_vertical(x,y_bot,y_top,f,num_samples):
+        r=np.linspace(0,1,num_samples+1)
+        r=(r[1:]+r[:-1])/2
+        ys=np.outer(y_bot,r)+np.outer(y_top,1.0-r)
+        return f(np.repeat(x[:,np.newaxis],num_samples,axis=1 ),ys)
+
+    @(classmethod)
+    def soilWithVerticalSampling(cls,
+        cohesion,
+          friction_angle,
+          pore_pressure,
+          saturation,
+          column_weight,
+          num_vertical_sample=1  
+        ):
+        return cls(
+            cohesion=cohesion,
+            friction_angle=friction_angle,
+            pore_pressure=pore_pressure,
+            saturation=saturation,
+            column_weight=column_weight,
+            vertical_cohesion=
+                lambda x,y,ytop: Soil.sample_vertical(x,y,ytop,cohesion,num_vertical_sample),
+            vertical_friction_angle=
+                lambda x,y,ytop: Soil.sample_vertical(x,y,ytop,friction_angle,num_vertical_sample)
+            )
+
+
 class lemResult:
     # methods fill optional_outputs that is a dictionary according to the MethodOption
     def __init__(self,

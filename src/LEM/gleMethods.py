@@ -127,8 +127,10 @@ def gle( geometry : Geometry, soil :Soil, options : lemOptions, lambdaFunc, name
     x_ends=x_ends[1:]
     y_ends=geometry.slip_surface(x_ends)
     s_ends=geometry.ground_surface(x_ends)
-    c_vert = soil.vertical_cohesion(x_ends,y_ends)*(s_ends-y_ends)
-    tan_phi_vert = soil.vertical_friction_angle(x_ends,y_ends)
+    vert_c = soil.vertical_cohesion(x_ends,y_ends,s_ends)
+    slice_h = (s_ends-y_ends)[:,np.newaxis]
+    c_vert = vert_c*slice_h
+    tan_phi_vert = np.tan(np.radians(soil.vertical_friction_angle(x_ends,y_ends,s_ends)))
 
     # Initialize variables for nonlocal use in F function
     R = np.zeros_like(w)
@@ -153,12 +155,12 @@ def gle( geometry : Geometry, soil :Soil, options : lemOptions, lambdaFunc, name
         
         dE = P*sin - S*cos/x[0]                                  # increment in the normal force at the side of the slices
         E  = np.maximum(np.cumsum(dE), 1.e-6)
-        X  = np.minimum(Q*E , c_vert + E*tan_phi_vert)           # shear force at the side of each slice, limited by the strength of the material
+        X  = np.minimum(Q*E ,np.min( c_vert + E[:,np.newaxis]*tan_phi_vert,1))           # shear force at the side of each slice, limited by the strength of the material
         Q_check = X/E
 
         rot_FoS   = (np.sum(S)/Osum - x[0])
         trasl_FoS = (np.sum(S * cos)/np.sum(P * sin) - x[0])
-        if np.any(Q>Q_check):
+        if np.any(Q>Q_check+1e-6):
             return [np.inf, np.inf]
         else:
             return [rot_FoS,trasl_FoS]
