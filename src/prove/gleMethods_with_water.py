@@ -1,0 +1,58 @@
+import numpy as np
+import sys
+from pathlib import Path
+
+# Add project root to path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
+from src.LEM.lemInterface import *
+from src.LEM.geometryPlot import *
+from src.LEM.gleMethods import *
+from src.searchCriticalF.circularSlipSurfaces import *
+
+options=lemOptions()
+ground_surface=lambda x : 0.0*(x<=0.0)+ x*(0.0<x)*(x<=3.0) + 3.0*(x>3.0)
+geometry=circularArc.fromInOutAndEta(ground_surface, 4.0, 0.0, np.radians(70))
+
+# soil=Soil(cohesion=lambda x,y: 5.0*np.ones_like(x+y),
+#           vertical_cohesion=lambda x,y,y_top: 5.0*np.ones_like(x+y)[:,np.newaxis],
+#           friction_angle=lambda x,y: 30.0*np.ones_like(x+y),
+#           vertical_friction_angle=lambda x,y,y_top: 30.0*np.ones_like(x+y)[:,np.newaxis],
+#           pore_pressure=lambda x,y: 0.0*np.ones_like(x+y),
+#           saturation=lambda x,y: 0.0*np.ones_like(x+y),
+#           column_weight=lambda x,y: 18.0*(ground_surface(x)-y))
+
+zw = 0.0 # ground water table
+pore_pressure = lambda x,y:  10*(-y + zw)
+P , N , Sres = 20 , 2 , 0.1
+def VanGenuchten(suction, P, N,Sres):
+    M = 1 - 1/N
+    effective_saturation = (1+(suction/P)**N)**-M
+    saturation = Sres + (1.0 - Sres)*effective_saturation
+    return saturation 
+
+soil=Soil.soilWithVerticalSampling(cohesion=lambda x,y: 5.0*np.ones_like(x+y),
+          friction_angle=lambda x,y: 30.0*np.ones_like(x+y),
+          pore_pressure= pore_pressure,
+          saturation=lambda x,y:  VanGenuchten(np.maximum(-pore_pressure(x,y) , 0.0), P , N , Sres),
+          column_weight=lambda x,y: 18.0*(ground_surface(x)-y),
+          num_vertical_sample=1
+    )
+
+
+from time import perf_counter as time
+
+methods={
+    "fellenius":        fellenius,
+    "bishop":           bishop,
+    "spencer":          spencer,
+    "morgerstern_price":morgerstern_price}
+
+# There is a strange effect for which the time of bishop method is exaggerated, probably python interpreter stuff
+results=dict()
+t2=time()
+for name in methods:
+    t1 = time()
+    results[name]=methods[name](geometry,soil,options)
+    print(f'{name:20} {results[name].factor_of_safety:.3f} with Lambda{f'{results[name].Lambda:>.3f}':>6}, in {time()-t1:.3f} seconds')
+print(f'total time {time()-t2:.3f}')
