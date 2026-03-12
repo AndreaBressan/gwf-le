@@ -17,14 +17,15 @@ ground_surface=lambda x : 0.0*(x<=0.0)+ x*(0.0<x)*(x<=3.0) + 3.0*(x>3.0)
 
 zw = 0.0 # ground water table
 pore_pressure = lambda x,y:  10*(-y + zw)
-P , N , Sres = 20 , 2 , 0.1
+P , N , Sres = 1 , 5 , 0.1
 def VanGenuchten(suction, P, N,Sres):
     M = 1 - 1/N
     effective_saturation = (1+(suction/P)**N)**-M
     saturation = Sres + (1.0 - Sres)*effective_saturation
     return saturation 
 
-soil=Soil.soilWithVerticalSampling(cohesion=lambda x,y: 5.0*np.ones_like(x+y),
+soil=Soil.soilWithVerticalSampling(
+          cohesion=lambda x,y: 10.0*np.ones_like(x+y),
           friction_angle=lambda x,y: 30.0*np.ones_like(x+y),
           pore_pressure= pore_pressure,
           saturation=lambda x,y:  VanGenuchten(np.maximum(-pore_pressure(x,y) , 0.0), P , N , Sres),
@@ -36,7 +37,7 @@ soil=Soil.soilWithVerticalSampling(cohesion=lambda x,y: 5.0*np.ones_like(x+y),
 domain=circularSlipSearchDomain(
     ground_surface=ground_surface,
     in_range=(2.,5.),
-    out_range=(-.5,1.),
+    out_range=(-2,1.),
 )
 
 

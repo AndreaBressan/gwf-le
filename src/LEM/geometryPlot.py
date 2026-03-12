@@ -42,7 +42,7 @@ class GeometryPlot(Geometry):
         self.plotSlipSurface(num_points)
         plt.ylim((self.bounding_box[1,0],self.bounding_box[1,1]))
         plt.xlim((self.bounding_box[0,0],self.bounding_box[0,1]))
-        plt.title('Geometry plot')
+        # plt.title('Geometry plot')
         return plt.gcf()
 
     def plotTerrain(self,num_points):
@@ -51,14 +51,17 @@ class GeometryPlot(Geometry):
         xs=self.getGroundPlotPoints(num_points)
         gs=self.ground_surface(xs)
         bt=self.bounding_box[1,0]*np.ones_like(gs)
-
+        
+        plt.ylim((self.bounding_box[1,0],self.bounding_box[1,1]))
+        plt.xlim((self.bounding_box[0,0],self.bounding_box[0,1]))
+        
         plt.fill_between(xs, gs, bt, interpolate=True, color=ocra)
         plt.plot(xs, gs, lw=1,color=ocra2)
 
-    def plotSlipSurface(self,num_points,color=(1,0,0)):
+    def plotSlipSurface(self,num_points,label,color=(1,0,0)):
         xl=self.getLandslidePlotPoints(num_points)
         yl=self.slip_surface(xl)
-        plt.plot(xl, yl, lw=1,color=color)
+        plt.plot(xl, yl, lw=1,color=color, label=label)
     
     def getGroundPlotPoints(self,num_points):
         xs=np.linspace(self.bounding_box[0,0],self.bounding_box[0,1],num_points)

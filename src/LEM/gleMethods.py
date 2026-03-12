@@ -17,15 +17,12 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from src.LEM.lemInterface import *
 
 
-#TODO check the correctness of formulas: quad_weights has become l_nodes, but I suspect that it should have been 1
-# Leo: I think you are right. now it works fine.
-# Leo: where you see 1, before it was l_nodes
 def slices_bottom_data(geometry : Geometry, soil :Soil, options: lemOptions) -> dict:
     #"geometric properties"
     x_ends,x_nodes=options.subdivision_method(geometry.landslide_interval)
     y_nodes=geometry.slip_surface(x_nodes)
     t_nodes=geometry.slip_tangent(x_nodes)
-    l_nodes=np.sqrt(1+t_nodes**2) # se non ricordo male, dovrebbe essere la lunghezza della stricia ma non mi torna. come mai?
+    l_nodes=np.sqrt(1+t_nodes**2)
     cos=1/l_nodes
     sin=np.sqrt(1-cos**2)*np.sign(t_nodes)
     depth = geometry.ground_surface(x_nodes)-y_nodes
