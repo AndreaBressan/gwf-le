@@ -116,7 +116,7 @@ computeAndPlotComparison('Case 2): Bishop Method',bounding_box,domain,method,gri
 
 def layered_property(v1, v2,y_layer):
     return lambda x,y: np.float64(np.where(y >= y_layer(x), v1, v2))
-# controllare che questa funzioni
+
 def column_weight(x,y,
                   ground_surface,
                   gamma_values, 
