@@ -1,4 +1,5 @@
 import numpy as np
+import scipy.interpolate as interp
 import sys
 from pathlib import Path
 
@@ -19,9 +20,7 @@ def computeAndPlotComparison(title,bounding_box,domain,method,grid_options,FoS_r
     GeometryPlot(geo,bounding_box=bounding_box).plotTerrain(100)
     GeometryPlot(geo,bounding_box=bounding_box).plotSlipSurface(100,label= f'this code, F={lemRes.factor_of_safety:.3f}')
     plt.title(title)
-    # non capisco come rappresentarlo perchè non sono archi di cerchio ma spezzate
-    # GeometryPlot(geo_ref,bounding_box=bounding_box).plotSlipSurface(100,label=f'FEM, F={FoS_ref}',color='black')
-    plt.text(-3,4, f'FEM, F={FoS_ref}')
+    GeometryPlot(geo_ref,bounding_box=bounding_box).plotSlipSurface(100,label=f'FEM, F={FoS_ref}',color='black')
     plt.legend()
     plt.gca().set_aspect('equal')
     params=domain.getParameters(geo)
@@ -33,7 +32,6 @@ options=lemOptions()
 base, height = 8.66 , 5.0
 ground_surface=lambda x : 0.0*(x<=0.0)+ height * x/base*(0.0<x)*(x<=base) + height*(x>base)
 bounding_box=np.array([[-5,15],[-4,6]])
-
 
 zw = -2.0 # ground water table
 pore_pressure = lambda x,y:  10*(-y + zw)
@@ -54,6 +52,19 @@ def column_weight(x,y,
     w1 = gamma_values[0]*(ys-y) #upper layer only
     w2 = (gamma_values[0]*(ys-y_layer(x)) + gamma_values[1]*(y_layer(x)-y) ) # both layers
     return np.where(y >= y_layer(x), w1, w2)
+
+
+def makePiecewiseGeometryFromData(filename):
+    data = np.loadtxt(filename, skiprows=1)
+    knots = np.array([data[0,0], *data[:,0].tolist(), data[-1,0]])
+    slip_fun=interp.make_interp_spline(data[:,0],data[:,1],k=1,t=knots)
+    slip_tan=slip_fun.derivative()
+    return Geometry(
+        ground_surface=ground_surface,
+        slip_surface=lambda x: slip_fun(x),
+        slip_tangent=lambda x: slip_tan(x),
+        landslide_interval=[data[0,0],data[-1,0]]
+    )
 
 """
  Dataset from:
@@ -93,9 +104,7 @@ grid_options={
     }
 
 FoS_ref =2.968
-# in qualche modo bisogna inserire queste spezzate ma non ho capito come si fa.
-data = np.loadtxt("SlipSurfUnsatClay.txt", skiprows=1)
-geo_ref = lambda x: np.interp(x, data[:,0],data[:,1])
+geo_ref = makePiecewiseGeometryFromData("SlipSurfUnsatClay.txt")
 
 computeAndPlotComparison('Case 1): Unsaturated Clay - M&P method',bounding_box,domain,method,grid_options,FoS_ref, geo_ref)
 
@@ -133,8 +142,6 @@ grid_options={
     }
 
 FoS_ref =1.897
-# in qualche modo bisogna inserire queste spezzate ma non ho capito come si fa.
-data = np.loadtxt("SlipSurfUnsatSand.txt", skiprows=1)
-geo_ref = lambda x: np.interp(x, data[:,0],data[:,1])
+geo_ref = makePiecewiseGeometryFromData("SlipSurfUnsatSand.txt")
 
 computeAndPlotComparison('Case 2): Unsaturated Sand - M&P method',bounding_box,domain,method,grid_options,FoS_ref, geo_ref)
