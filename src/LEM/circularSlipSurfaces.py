@@ -16,7 +16,7 @@ import numpy as np
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from src.searchCriticalF.searchInterface import searchDomain
+from src.LEM.searchInterface import searchDomain
 from src.LEM.lemInterface import Geometry
 
 class circularArc (Geometry):

@@ -9,8 +9,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from src.LEM.lemInterface import *
 from src.LEM.geometryPlot import *
 from src.LEM.gleMethods import *
-from src.searchCriticalF.circularSlipSurfaces import *
-from src.searchCriticalF.searchInterface import *
+from src.LEM.circularSlipSurfaces import *
+from src.LEM.searchInterface import *
 
 
 def computeAndPlotComparison(title,bounding_box,domain,method,grid_options,FoS_ref, geo_ref):

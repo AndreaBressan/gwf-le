@@ -8,7 +8,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from src.LEM.lemInterface import *
 from src.LEM.geometryPlot import *
 from src.LEM.gleMethods import *
-from src.searchCriticalF.circularSlipSurfaces import *
+from src.LEM.circularSlipSurfaces import *
 
 options=lemOptions()
 ground_surface=lambda x : 0.0*(x<=0.0)+ x*(0.0<x)*(x<=3.0) + 3.0*(x>3.0)
