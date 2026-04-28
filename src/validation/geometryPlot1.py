@@ -1,9 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import sys
-sys.path.append("../LEM")
-from lemInterface import Geometry
-from geometryPlot import *
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+from src.LEM.lemInterface import Geometry
+from src.LEM.geometryPlot import *
 
 
 geo=Geometry(lambda x:x+1, lambda x: x*x, lambda x: 2*x,np.array([1-np.sqrt(5),1+np.sqrt(5)])/2)

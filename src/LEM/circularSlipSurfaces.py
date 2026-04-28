@@ -184,12 +184,15 @@ class circularSlipSearchDomain (searchDomain):
                  ground_surface : Callable,
                  in_range  : tuple[float,float],
                  out_range : tuple[float,float],
-                 eta_min_shift : float = np.radians(1)
+                 eta_min_shift : float = np.radians(1),
+                 min_surf_length : float = 1
     ):
         self.ground_surface = ground_surface 
         self.in_range  = in_range  
         self.out_range = out_range
         self.eta_min_shift = eta_min_shift
+        self.min_surf_length = min_surf_length
+        
     def getParametersBound(self) -> np.ndarray:
         return np.array([self.in_range, self.out_range])
     
@@ -231,6 +234,8 @@ class circularSlipSearchDomain (searchDomain):
         params=np.zeros(3)
         for i in in_points:
             for o in out_points:
+                if np.abs(i-o)<self.min_surf_length:
+                    continue
                 eta_min=self.computeEtaMinForSurface(i,o)+self.eta_min_shift
                 eta_max=np.pi/2
                 num_eta=np.floor((eta_max-eta_min)/min_eta_inc)
@@ -270,6 +275,8 @@ class circularSlipSearchDomain (searchDomain):
         if not param[0]>=self.in_range[0] and param[0]<=self.in_range[1] :
             return False
         if not param[1]>=self.out_range[0] and param[1]<=self.out_range[1]:
-            return False        
+            return False
+        if not np.abs(param[1]-param[1])>=self.min_surf_length:
+            return False
         eta_min=self.computeEtaMinForSurface(param[0],param[1])
         return param[2]>eta_min+self.eta_min_shift and param[2]<=np.pi/2

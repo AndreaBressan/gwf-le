@@ -58,7 +58,7 @@ class GeometryPlot(Geometry):
         plt.fill_between(xs, gs, bt, interpolate=True, color=ocra)
         plt.plot(xs, gs, lw=1,color=ocra2)
 
-    def plotSlipSurface(self,num_points,label,color=(1,0,0)):
+    def plotSlipSurface(self,num_points,label="",color=(1,0,0)):
         xl=self.getLandslidePlotPoints(num_points)
         yl=self.slip_surface(xl)
         plt.plot(xl, yl, lw=1,color=color, label=label)
