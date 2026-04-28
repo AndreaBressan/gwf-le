@@ -98,11 +98,12 @@ class circularArc (Geometry):
         in_pt=np.array([ex,ey])
         m=(out_pt+in_pt)/2
         nue=np.linalg.norm(out_pt-in_pt)
-        alpha=eta+np.sign(out_x-in_x)*np.arcsin((m[1]-out_pt[1])/nue*2)
+        slope=np.arcsin((m[1]-out_pt[1])/nue*2)
+        alpha=eta-slope
         if alpha>0:
             r=nue/np.sin(alpha)/2
             d=(1-np.cos(alpha))*r
-            c=m+(r-d)*ortho(m,in_pt)
+            c=m+(r-d)*np.sign(in_x-out_x)*ortho(m,in_pt)
         else:
             r=+np.inf
             c=np.array([(-1)**int(ux>ex)*np.inf,np.inf])
