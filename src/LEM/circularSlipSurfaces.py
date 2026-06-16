@@ -273,11 +273,14 @@ class circularSlipSearchDomain (searchDomain):
         return eta_mid
     
     def paramIsValid(self, param:np.ndarray)-> bool:
-        if not param[0]>=self.in_range[0] and param[0]<=self.in_range[1] :
+        in_x, out_x, eta = param[0], param[1], param[2]
+        if not (self.in_range[0] <= in_x <= self.in_range[1]):
             return False
-        if not param[1]>=self.out_range[0] and param[1]<=self.out_range[1]:
+        if not (self.out_range[0] <= out_x <= self.out_range[1]):
             return False
-        if not np.abs(param[1]-param[1])>=self.min_surf_length:
+        # Reject degenerate surfaces where entry and exit collapse onto each other
+        # (the dominant failure mode when in_range and out_range overlap).
+        if np.abs(in_x - out_x) < self.min_surf_length:
             return False
-        eta_min=self.computeEtaMinForSurface(param[0],param[1])
-        return param[2]>eta_min+self.eta_min_shift and param[2]<=np.pi/2
+        eta_min=self.computeEtaMinForSurface(in_x, out_x)
+        return eta > eta_min + self.eta_min_shift and eta <= np.pi/2

@@ -36,7 +36,8 @@ class searchDomain:
     def makeGeometry(self, param:np.ndarray) -> Geometry:
         pass
     def paramIsValid(self, param:np.ndarray)-> bool:
-        return np.all(param>=self.getParametersBound()[:,0]) and np.all(paramv=self.getParametersBound()[:,1])
+        bounds = self.getParametersBound()
+        return np.all(param >= bounds[:, 0]) and np.all(param <= bounds[:, 1])
 
 class lemMethod:
     def __init__(self,
