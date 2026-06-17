@@ -170,21 +170,10 @@ def gle( geometry : Geometry, soil :Soil, options : lemOptions, lambdaFunc, name
             tol=options.tolerance
             )
     slice_data.update({"p":p , "R":R, "O": O , "m_alpha": m_alpha, "S":S, "E":E, "X":X})
-    # A non-converged root yields a meaningless (often near-zero or negative)
-    # factor of safety. Flag it as NaN so callers can discard the surface
-    # instead of treating a spurious value as a real critical FoS.
-    fos = root.x[0] if root.success else np.nan
-    # The GLE equations admit spurious roots: the multidimensional solver,
-    # though it reports success, can converge far from the physical solution
-    # (e.g. to a negative or near-zero FoS) on deep/degenerate surfaces. The
-    # physical root stays close to the Bishop seed, so reject results that fall
-    # grossly outside a band around it.
-    if not (np.isfinite(FoS_Bishop) and FoS_Bishop > 0
-            and 0.5 * FoS_Bishop <= fos <= 2.0 * FoS_Bishop):
-        fos = np.nan
+
     return lemResult(
         method_name=name,
-        factor_of_safety = fos,
+        factor_of_safety = root.x[0],
         Lambda = root.x[1],
         optional_outputs=dict((k,slice_data[k]) for k in options.optional_outputs if k in slice_data)
     )
