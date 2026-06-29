@@ -103,24 +103,20 @@ def spencer(geometry : Geometry, soil :Soil, options : lemOptions) -> lemResult:
 
 
 def gle( geometry : Geometry, soil :Soil, options : lemOptions, lambdaFunc, name="GLE with given f") -> lemResult:
-    required=["x_ends","x_nodes","t_nodes","cos","sin","tan_phi","c","u","w"]
+    required=["x_ends","x_nodes","y_nodes","t_nodes","cos","sin","tan_phi","c","u","w"]
     sub_options=options.copy()
     sub_options.optional_outputs=list(set(sub_options.optional_outputs + required))
     start=bishop(geometry,soil, sub_options)
     slice_data=start.optional_outputs
 
-    x_ends, x_nodes, t_nodes, cos, sin, tan_phi, c, u, w = (
+    x_ends, x_nodes, y_nodes, t_nodes, cos, sin, tan_phi, c, u, w = (
         slice_data.get(k) for k in required)
-    
+
     FoS_Bishop=start.factor_of_safety
-    
+
     L=geometry.landslide_interval[0]-geometry.landslide_interval[1]
     f_x=lambdaFunc((geometry.landslide_interval[0]-x_nodes)/L)
-    p=w*cos
-    S=(c + ( p - u ) * tan_phi)
-    O=w*sin
-    Osum=np.sum(O,0)
-    
+
     x_ends=x_ends[1:]
     y_ends=geometry.slip_surface(x_ends)
     s_ends=geometry.ground_surface(x_ends)
@@ -129,19 +125,45 @@ def gle( geometry : Geometry, soil :Soil, options : lemOptions, lambdaFunc, name
     c_vert = vert_c*slice_h
     tan_phi_vert = np.tan(np.radians(soil.vertical_friction_angle(x_ends,y_ends,s_ends)))
 
+    # The interslice forces are integrated (cumsum) starting from the toe of the
+    # slope, where the side force vanishes. The canonical orientation assumed by
+    # this routine is a slope facing the increasing-x direction (toe at x_min).
+    # When the slope faces the opposite way the slice arrays are reversed so the
+    # integration still starts from the toe; otherwise the cumulative side forces
+    # and the driving sum are built in the wrong direction, producing FoS = 0 or
+    # negative values and apparently "flipped" critical surfaces.
+    sign=np.sign(y_nodes[-1]-y_nodes[1])
+    if sign < 0:
+        cos          = np.flip(cos)
+        sin          = -np.flip(sin)
+        t_nodes      = -np.flip(t_nodes)
+        tan_phi      = np.flip(tan_phi)
+        c            = np.flip(c)
+        u            = np.flip(u)
+        w            = np.flip(w)
+        f_x          = np.flip(f_x)
+        c_vert       = np.flip(c_vert, axis=0)
+        tan_phi_vert = np.flip(tan_phi_vert, axis=0)
+
+    p=w*cos
+    S=(c + ( p - u ) * tan_phi)
+    O=w*sin
+    Osum=np.sum(O,0)
+
     # Initialize variables for nonlocal use in F function
     R = np.zeros_like(w)
     m_alpha = np.zeros_like(cos)
     Q = np.zeros_like(w)
     E = np.zeros_like(w)
     X = np.zeros_like(w)
+    feasible = True
 
     def F(x):
-        nonlocal R, p, m_alpha, Q, S, E, X
+        nonlocal R, p, m_alpha, Q, S, E, X, feasible
 
         m_alpha = cos * (1+ tan_phi * t_nodes / x[0])
         m_alpha = np.maximum(m_alpha,0.2)
-        m_alpha_star = sin - cos * tan_phi / x[0] 
+        m_alpha_star = sin - cos * tan_phi / x[0]
 
         Q = x[1]*f_x
         den = (m_alpha + m_alpha_star* Q)
@@ -149,18 +171,22 @@ def gle( geometry : Geometry, soil :Soil, options : lemOptions, lambdaFunc, name
         s = c + ( p - u ) * tan_phi
         S=s
         P=np.maximum(p,0)                           # force normal to the slice always compressive
-        
+
         dE = P*sin - S*cos/x[0]                                  # increment in the normal force at the side of the slices
         E  = np.maximum(np.cumsum(dE), 1.e-6)
         X  = np.minimum(Q*E ,np.min( c_vert + E[:,np.newaxis]*tan_phi_vert,1))           # shear force at the side of each slice, limited by the strength of the material
         Q_check = X/E
+        # Admissibility of the interslice shear (Q must not exceed the available
+        # strength). This used to be enforced by returning [inf, inf] from F, but
+        # that discontinuity corrupts the finite-difference Jacobian of the root
+        # finder, which then makes no progress and returns the initial guess. We
+        # instead solve the smooth equilibrium system and verify admissibility a
+        # posteriori at the converged point.
+        feasible = not np.any(Q > Q_check + 1e-6)
 
         rot_FoS   = (np.sum(S)/Osum - x[0])
         trasl_FoS = (np.sum(S * cos)/np.sum(P * sin) - x[0])
-        if np.any(Q>Q_check+1e-6):
-            return [np.inf, np.inf]
-        else:
-            return [rot_FoS,trasl_FoS]
+        return [rot_FoS,trasl_FoS]
 
     from scipy import optimize
 
@@ -169,11 +195,40 @@ def gle( geometry : Geometry, soil :Soil, options : lemOptions, lambdaFunc, name
             fun=F, x0=[FoS_Bishop, Lambda],
             tol=options.tolerance
             )
-    slice_data.update({"p":p , "R":R, "O": O , "m_alpha": m_alpha, "S":S, "E":E, "X":X})
+    try:
+        F(root.x)   # refresh the slice quantities and the feasibility flag at the solution
+    except Exception:
+        feasible = False
+
+    # The GLE solution is only valid when the solver actually drives both the
+    # rotational and the translational equilibrium residuals to zero and the
+    # interslice shear stays admissible. With layered profiles or a high water
+    # table the system is stiffer and the solver may fail to converge or land on
+    # an inadmissible solution; the returned FoS then looks plausible but does
+    # not represent equilibrium. Reporting it lets a surface-search optimiser
+    # latch onto these spurious values and return a wrong, often "reversed"
+    # critical surface with FoS ~ 0. Flag such results as non-physical (NaN) so
+    # the caller discards them.
+    FoS = root.x[0]
+    try:
+        residual = float(np.max(np.abs(np.asarray(root.fun, dtype=float))))
+    except (TypeError, ValueError):
+        residual = np.inf
+    converged = bool(root.success) and np.isfinite(residual) \
+        and residual <= max(10*options.tolerance, 1e-3)
+    if not (converged and feasible and np.isfinite(FoS) and FoS > 0):
+        FoS = np.nan
+
+    outputs={"p":p , "R":R, "O": O , "m_alpha": m_alpha, "S":S, "E":E, "X":X}
+    if sign < 0:
+        # restore the original slice ordering so these per-slice outputs stay
+        # aligned with x_nodes/y_nodes (which were not reversed)
+        outputs={k:(np.flip(v, axis=0) if np.ndim(v) else v) for k,v in outputs.items()}
+    slice_data.update(outputs)
 
     return lemResult(
         method_name=name,
-        factor_of_safety = root.x[0],
+        factor_of_safety = FoS,
         Lambda = root.x[1],
         optional_outputs=dict((k,slice_data[k]) for k in options.optional_outputs if k in slice_data)
     )
